@@ -1,0 +1,11 @@
+0.1.2 (2012-01-26)
+==================
+
+ - Catch IOError raised by print in initialization, it may not work in some
+   environments (e.g. mod_wsgi). (Meno Smits)
+
+0.1.1 (2010-05-09)
+==================
+
+Initial release.
+

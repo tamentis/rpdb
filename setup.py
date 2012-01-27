@@ -1,11 +1,20 @@
 #!/usr/bin/python
 
+import os
 from distutils.core import setup
+
+here = os.path.abspath(os.path.dirname(__file__))
+try:
+    README = open(os.path.join(here, 'README.rst')).read()
+    CHANGES = open(os.path.join(here, 'CHANGES.txt')).read()
+except IOError:
+    README = CHANGES = ''
 
 setup(
     name="rpdb",
     version="0.1.2",
-    description="Remote debugger based on pdb",
+    description="pdb wrapper with remote access via tcp socket",
+    long_description=README + "\n\n" + CHANGES,
     author="Bertrand Janin",
     author_email="tamentis@neopulsar.org",
     url="http://tamentis.com/projects/rpdb",
