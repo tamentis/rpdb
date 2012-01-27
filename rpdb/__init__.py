@@ -13,7 +13,12 @@ class Rpdb(pdb.Pdb):
     def __init__(self, port=4444):
         """Initialize the socket and initialize pdb."""
         addr = socket.gethostname()
-        print("pdb is running on %s:%d" % (addr, port))
+
+        # Writes to stdout are forbidden in mod_wsgi environments
+        try:
+            print("pdb is running on %s:%d" % (addr, port))
+        except IOError:
+            pass
 
         # Backup stdin and stdout before replacing them by the socket handle
         self.old_stdout = sys.stdout
