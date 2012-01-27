@@ -12,7 +12,7 @@ But you can change that by simply instantiating Rpdb manually::
     debugger = rpdb.Rpdb(12345)
     debugger.set_trace()
 
-It is known to work on Jython 2.5, Python 2.5 and Python 3.1. It was written
+It is known to work on Jython 2.5, Python 2.5 to 3.1. It was written
 originally for Jython since this is pretty much the only way to debug it when
 running it on Tomcat.
 
@@ -42,7 +42,7 @@ Author(s)
 ---------
 Bertrand Janin <tamentis@neopulsar.org> - http://tamentis.com/
 
-The idea comes from there:
+This is inspired by:
 
     http://bugs.python.org/issue721464
     http://snippets.dzone.com/posts/show/7248

@@ -1,13 +1,15 @@
 """Remote Python Debugger (pdb wrapper)."""
 
 __author__ = "Bertrand Janin <tamentis@neopulsar.org>"
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 import pdb
 import socket
 import sys
 
+
 class Rpdb(pdb.Pdb):
+
     def __init__(self, port=4444):
         """Initialize the socket and initialize pdb."""
         addr = socket.gethostname()
@@ -41,11 +43,12 @@ class Rpdb(pdb.Pdb):
 
     do_EOF = do_quit = do_exit = do_c = do_cont = do_continue
 
+
 def set_trace():
     """Wrapper function to keep the same import x; x.set_trace() interface.
-    
-    We catch all the possible exceptions from pdb and cleanup before 
-    
+
+    We catch all the possible exceptions from pdb and cleanup.
+
     """
     debugger = Rpdb()
     try:
