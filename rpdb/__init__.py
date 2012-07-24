@@ -10,9 +10,8 @@ import sys
 
 class Rpdb(pdb.Pdb):
 
-    def __init__(self, port=4444):
+    def __init__(self, addr="127.0.0.1", port=4444):
         """Initialize the socket and initialize pdb."""
-        addr = socket.gethostname()
 
         # Writes to stdout are forbidden in mod_wsgi environments
         try:
