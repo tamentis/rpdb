@@ -57,6 +57,6 @@ def set_trace():
     debugger = Rpdb()
     try:
         debugger.set_trace(sys._getframe().f_back)
-    finally:
-        debugger.shutdown()
+    except Exception as e:
+        print e
 
