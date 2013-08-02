@@ -12,7 +12,7 @@ except IOError:
 
 setup(
     name="rpdb",
-    version="0.1.2",
+    version="0.1.3",
     description="pdb wrapper with remote access via tcp socket",
     long_description=README + "\n\n" + CHANGES,
     author="Bertrand Janin",
