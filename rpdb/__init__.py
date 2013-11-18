@@ -58,5 +58,5 @@ def set_trace():
     try:
         debugger.set_trace(sys._getframe().f_back)
     except Exception as e:
-        print e
+        print(e)
 
