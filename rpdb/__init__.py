@@ -1,7 +1,7 @@
 """Remote Python Debugger (pdb wrapper)."""
 
-__author__ = "Bertrand Janin <tamentis@neopulsar.org>"
-__version__ = "0.1.2"
+__author__ = "Bertrand Janin <b@janin.com>"
+__version__ = "0.1.3"
 
 import pdb
 import socket
@@ -59,4 +59,3 @@ def set_trace():
         debugger.set_trace(sys._getframe().f_back)
     except Exception as e:
         print(e)
-
