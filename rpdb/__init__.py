@@ -48,13 +48,13 @@ class Rpdb(pdb.Pdb):
     do_EOF = do_quit = do_exit = do_c = do_cont = do_continue
 
 
-def set_trace():
+def set_trace(addr="127.0.0.1", port=4444):
     """Wrapper function to keep the same import x; x.set_trace() interface.
 
     We catch all the possible exceptions from pdb and cleanup.
 
     """
-    debugger = Rpdb()
+    debugger = Rpdb(addr=addr, port=port)
     try:
         debugger.set_trace(sys._getframe().f_back)
     except Exception as e:
