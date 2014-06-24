@@ -15,7 +15,7 @@ class Rpdb(pdb.Pdb):
 
         # Writes to stdout are forbidden in mod_wsgi environments
         try:
-            print("pdb is running on %s:%d" % (addr, port))
+            sys.stderr.write("pdb is running on %s:%d\n" % (addr, port))
         except IOError:
             pass
 
