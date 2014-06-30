@@ -13,12 +13,6 @@ class Rpdb(pdb.Pdb):
     def __init__(self, addr="127.0.0.1", port=4444):
         """Initialize the socket and initialize pdb."""
 
-        # Writes to stdout are forbidden in mod_wsgi environments
-        try:
-            sys.stderr.write("pdb is running on %s:%d\n" % (addr, port))
-        except IOError:
-            pass
-
         # Backup stdin and stdout before replacing them by the socket handle
         self.old_stdout = sys.stdout
         self.old_stdin = sys.stdin
@@ -28,6 +22,13 @@ class Rpdb(pdb.Pdb):
         self.skt.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
         self.skt.bind((addr, port))
         self.skt.listen(1)
+
+        # Writes to stdout are forbidden in mod_wsgi environments
+        try:
+            sys.stderr.write("pdb is running on %s:%d\n" % self.skt.getsockname())
+        except IOError:
+            pass
+
         (clientsocket, address) = self.skt.accept()
         handle = clientsocket.makefile('rw')
         pdb.Pdb.__init__(self, completekey='tab', stdin=handle, stdout=handle)
