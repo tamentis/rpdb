@@ -43,7 +43,15 @@ Author(s)
 ---------
 Bertrand Janin <b@janin.com> - http://tamentis.com/
 
+With contributions from (chronological, latest first):
+
+ - Steven Willis <onlynone@gmail.com>
+ - Jorge Niedbalski R <niedbalski@gmail.com>
+ - Cyprien Le Pannérer <clepannerer@edd.fr>
+ - k4ml <kamal.mustafa@gmail.com>
+ - Sean M. Collins <sean@coreitpro.com>
+
 This is inspired by:
 
-    http://bugs.python.org/issue721464
-    http://snippets.dzone.com/posts/show/7248
+ - http://bugs.python.org/issue721464
+ - http://snippets.dzone.com/posts/show/7248
