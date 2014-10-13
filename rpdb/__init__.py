@@ -58,5 +58,5 @@ def set_trace(addr="127.0.0.1", port=4444):
     debugger = Rpdb(addr=addr, port=port)
     try:
         debugger.set_trace(sys._getframe().f_back)
-    except Exception as e:
-        print(e)
+    except Exception:
+        print(Exception)
