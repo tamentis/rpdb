@@ -8,6 +8,10 @@ import socket
 import sys
 import traceback
 
+# {port: sys.stdout} pairs to track recursive rpdb invocation on same port.
+# This scheme doesn't interfere with recursive invocations on separate ports -
+# useful, eg, for concurrently debugging separate threads.
+OCCUPIED = {}
 
 class Rpdb(pdb.Pdb):
 
@@ -17,6 +21,7 @@ class Rpdb(pdb.Pdb):
         # Backup stdin and stdout before replacing them by the socket handle
         self.old_stdout = sys.stdout
         self.old_stdin = sys.stdin
+        self.port = port
 
         # Open a 'reusable' socket to let the webapp reload on the same port
         self.skt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -32,6 +37,7 @@ class Rpdb(pdb.Pdb):
 
         (clientsocket, address) = self.skt.accept()
         handle = clientsocket.makefile('rw')
+        OCCUPIED[port] = handle
         pdb.Pdb.__init__(self, completekey='tab', stdin=handle, stdout=handle)
         sys.stdout = sys.stdin = handle
 
@@ -39,6 +45,7 @@ class Rpdb(pdb.Pdb):
         """Revert stdin and stdout, close the socket."""
         sys.stdout = self.old_stdout
         sys.stdin = self.old_stdin
+        del OCCUPIED[self.port]
         self.skt.close()
 
     def do_continue(self, arg):
@@ -74,7 +81,16 @@ def set_trace(addr="127.0.0.1", port=4444):
     We catch all the possible exceptions from pdb and cleanup.
 
     """
-    debugger = Rpdb(addr=addr, port=port)
+    try:
+        debugger = Rpdb(addr=addr, port=port)
+    except socket.error:
+        if OCCUPIED[port] != sys.stdout:
+            # Port occupied by somethig else.
+            raise
+        else:
+            # rpdb is already on that port - let it continue:
+            sys.stdout.write("(Identical recurrent rpdb invocation ignored)\n")
+            return
     try:
         debugger.set_trace(sys._getframe().f_back)
     except Exception:
