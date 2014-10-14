@@ -6,6 +6,7 @@ __version__ = "0.1.5"
 import pdb
 import socket
 import sys
+import traceback
 
 
 class Rpdb(pdb.Pdb):
@@ -39,14 +40,32 @@ class Rpdb(pdb.Pdb):
         sys.stdout = self.old_stdout
         sys.stdin = self.old_stdin
         self.skt.close()
-        self.set_continue()
 
     def do_continue(self, arg):
-        """Stop all operation on ``continue``."""
-        self.shutdown()
-        return 1
+        """Clean-up and do underlying continue."""
+        try:
+            return pdb.Pdb.do_continue(self, arg)
+        finally:
+            self.shutdown()
 
-    do_EOF = do_quit = do_exit = do_c = do_cont = do_continue
+    do_c = do_cont = do_continue
+
+    def do_quit(self, arg):
+        """Clean-up and do underlying quit."""
+        try:
+            return pdb.Pdb.do_quit(self, arg)
+        finally:
+            self.shutdown()
+
+    do_q = do_exit = do_quit
+
+    def do_EOF(self, arg):
+        """Clean-up and do underlying EOF."""
+        try:
+            return pdb.Pdb.do_EOF(self, arg)
+        finally:
+            self.shutdown()
+
 
 
 def set_trace(addr="127.0.0.1", port=4444):
@@ -58,5 +77,5 @@ def set_trace(addr="127.0.0.1", port=4444):
     debugger = Rpdb(addr=addr, port=port)
     try:
         debugger.set_trace(sys._getframe().f_back)
-    except Exception as e:
-        print(e)
+    except Exception:
+        traceback.print_exc()
