@@ -59,7 +59,7 @@ class Rpdb(pdb.Pdb):
     do_q = do_exit = do_quit
 
     def do_EOF(self, arg):
-        """Clean-up and do underlying quit."""
+        """Clean-up and do underlying EOF."""
         try:
             return pdb.Pdb.do_EOF(self, arg)
         finally:
