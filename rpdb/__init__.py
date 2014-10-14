@@ -6,6 +6,7 @@ __version__ = "0.1.5"
 import pdb
 import socket
 import sys
+import traceback
 
 
 class Rpdb(pdb.Pdb):
@@ -77,4 +78,4 @@ def set_trace(addr="127.0.0.1", port=4444):
     try:
         debugger.set_trace(sys._getframe().f_back)
     except Exception:
-        print(Exception)
+        traceback.print_exc()
