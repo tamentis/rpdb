@@ -10,7 +10,8 @@ import traceback
 
 # {port: sys.stdout} pairs to track recursive rpdb invocation on same port.
 # This scheme doesn't interfere with recursive invocations on separate ports -
-# useful, eg, for concurrently debugging separate threads.
+# useful, eg, for concurrently debugging separate threads. HOWEVER, this is
+# not yet handled in a thread-safe way.
 OCCUPIED = {}
 
 class Rpdb(pdb.Pdb):
