@@ -1,5 +1,5 @@
 rpdb - remote debugger based on pdb
-==================================
+===================================
 
 rpbm is a wrapper around pdb that re-routes stdin and stdout to a socket
 handler. By default it opens the debugger on port 4444::
@@ -27,7 +27,7 @@ Installation in CPython (standard Python)
     pip install rpdb
 
 For a quick, ad hoc alternative, you can copy the entire rpdb subdirectory
-(the directory directly containing the __init.py file) to somewhere on your
+(the directory directly containing the __init__.py file) to somewhere on your
 $PYTHONPATH.
 
 Installation in a Tomcat webapp

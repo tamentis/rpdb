@@ -1,7 +1,7 @@
 """Remote Python Debugger (pdb wrapper)."""
 
 __author__ = "Bertrand Janin <b@janin.com>"
-__version__ = "0.1.5"
+__version__ = "0.1.6"
 
 import pdb
 import socket
