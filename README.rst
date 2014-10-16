@@ -21,10 +21,14 @@ to continue is to access rpdb using telnet, netcat, etc..::
 
     nc 127.0.0.1 4444
 
-Installation on CPython (standard Python)
+Installation in CPython (standard Python)
 -----------------------------------------
 
     pip install rpdb
+
+For a quick, ad hoc alternative, you can copy the entire rpdb subdirectory
+(the directory directly containing the __init.py file) to somewhere on your
+$PYTHONPATH.
 
 Installation in a Tomcat webapp
 -------------------------------
@@ -35,7 +39,7 @@ WEB-INF/lib/Lib folder along with the standard Jython library (required).
 Known bugs
 ----------
   - The socket is not always closed properly so you will need to ^C in netcat
-    and ^\ in telnet to exit after a continue.
+    and Esc+q in telnet to exit after a continue or quit.
   - There is a bug in Jython 2.5/pdb that causes rpdb to stop on ghost
     breakpoints after you continue ('c'), this is fixed in 2.7b1.
 
