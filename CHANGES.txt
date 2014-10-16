@@ -3,6 +3,10 @@
 
  - Write addr/port to stderr instead of stdout (thanks to @onlynone).
  - Allow for dynamic host port (thanks to @onlynone).
+ - Make q/quit do proper cleanup (@kenmanheimer)
+ - Benignly disregard repeated rpdb.set_trace() to same port as currently
+   active session (@kenmanheimer)
+ - Extend backwards compatibility down to Python 2.5 (@kenmanheimer)
 
 0.1.4 (2014-04-28)
 ==================
