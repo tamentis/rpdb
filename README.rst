@@ -49,7 +49,8 @@ Bertrand Janin <b@janin.com> - http://tamentis.com/
 
 With contributions from (chronological, latest first):
 
- - Steven Willis <onlynone@gmail.com>
+ - Ken Manheimer - @kenmanheimer
+ - Steven Willis - @onlynone
  - Jorge Niedbalski R <niedbalski@gmail.com>
  - Cyprien Le Pannérer <clepannerer@edd.fr>
  - k4ml <kamal.mustafa@gmail.com>
