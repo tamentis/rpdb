@@ -1,7 +1,7 @@
 """Remote Python Debugger (pdb wrapper)."""
 
 __author__ = "Bertrand Janin <b@janin.com>"
-__version__ = "0.1.6"
+__version__ = "0.1.5"
 
 import pdb
 import socket
@@ -82,7 +82,7 @@ def set_trace(addr="127.0.0.1", port=4444):
     try:
         debugger = Rpdb(addr=addr, port=port)
     except socket.error:
-        if OCCUPIED.isClaimed(port, sys.stdout):
+        if OCCUPIED.is_claimed(port, sys.stdout):
             # rpdb is already on this port - good enough, let it go on:
             sys.stdout.write("(Recurrent rpdb invocation ignored)\n")
             return
@@ -104,18 +104,22 @@ class OccupiedPorts(object):
     Determination is according to whether a file handle is equal to what is
     registered against the specified port.
     """
+
     def __init__(self):
         self.lock = threading.RLock()
         self.claims = {}
+
     def claim(self, port, handle):
         self.lock.acquire(True)
-        self.claims[port] = handle
+        self.claims[port] = id(handle)
         self.lock.release()
-    def isClaimed(self, port, handle):
+
+    def is_claimed(self, port, handle):
         self.lock.acquire(True)
-        got = (self.claims.get(port) == handle)
+        got = (self.claims.get(port) == id(handle))
         self.lock.release()
         return got
+
     def unclaim(self, port):
         self.lock.acquire(True)
         del self.claims[port]
