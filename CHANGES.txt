@@ -1,3 +1,11 @@
+0.1.6 (2014-10-15)
+==================
+
+ - Make q/quit do proper cleanup (@kenmanheimer)
+ - Benignly disregard repeated rpdb.set_trace() to same port as currently
+   active session (@kenmanheimer)
+ - Extend backwards compatibility down to Python 2.5 (@kenmanheimer)
+
 0.1.5 (YYYY-MM-DD)
 ==================
 
