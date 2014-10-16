@@ -9,7 +9,7 @@ handler. By default it opens the debugger on port 4444::
 But you can change that by simply instantiating Rpdb manually::
 
     import rpdb
-    debugger = rpdb.Rpdb(12345)
+    debugger = rpdb.Rpdb(port=12345)
     debugger.set_trace()
 
 It is known to work on Jython 2.5 to 2.7, Python 2.5 to 3.1. It was written
