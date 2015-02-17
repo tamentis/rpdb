@@ -10,6 +10,21 @@ import sys
 import traceback
 
 
+class FileObjectWrapper(object):
+    def __init__(self, fileobject, stdio):
+        self._obj = fileobject
+        self._io = stdio
+
+    def __getattr__(self, attr):
+        if hasattr(self._obj, attr):
+            attr = getattr(self._obj, attr)
+        elif hasattr(self._io, attr):
+            attr = getattr(self._io, attr)
+        else:
+            raise AttributeError("Attribute %s is not found" % attr)
+        return attr
+
+
 class Rpdb(pdb.Pdb):
 
     def __init__(self, addr="127.0.0.1", port=4444):
@@ -35,7 +50,9 @@ class Rpdb(pdb.Pdb):
 
         (clientsocket, address) = self.skt.accept()
         handle = clientsocket.makefile('rw')
-        pdb.Pdb.__init__(self, completekey='tab', stdin=handle, stdout=handle)
+        pdb.Pdb.__init__(self, completekey='tab',
+                         stdin=FileObjectWrapper(handle, self.old_stdin),
+                         stdout=FileObjectWrapper(handle, self.old_stdin))
         sys.stdout = sys.stdin = handle
         OCCUPIED.claim(port, sys.stdout)
 
@@ -70,7 +87,6 @@ class Rpdb(pdb.Pdb):
             return pdb.Pdb.do_EOF(self, arg)
         finally:
             self.shutdown()
-
 
 
 def set_trace(addr="127.0.0.1", port=4444):
