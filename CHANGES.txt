@@ -1,7 +1,7 @@
 0.1.6 (YYYY-MM-DD)
 ==================
 
- - 
+ - Give access to attributes of stdin and stdout (@fuxpavel).
 
 0.1.5 (2014-10-16)
 ==================
