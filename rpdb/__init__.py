@@ -111,6 +111,15 @@ def set_trace(addr="127.0.0.1", port=4444):
         traceback.print_exc()
 
 
+def post_mortem(addr="127.0.0.1", port=4444):
+    
+    debugger = rpdb.Rpdb(addr=addr, port=port)
+    type, value, tb = sys.exc_info()
+    traceback.print_exc()
+    debugger.reset()
+    debugger.interaction(None, tb)
+
+
 class OccupiedPorts(object):
     """Maintain rpdb port versus stdin/out file handles.
 
