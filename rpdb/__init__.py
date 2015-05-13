@@ -113,7 +113,7 @@ def set_trace(addr="127.0.0.1", port=4444):
 
 def post_mortem(addr="127.0.0.1", port=4444):
     
-    debugger = rpdb.Rpdb(addr=addr, port=port)
+    debugger = Rpdb(addr=addr, port=port)
     type, value, tb = sys.exc_info()
     traceback.print_exc()
     debugger.reset()
