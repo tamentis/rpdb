@@ -1,7 +1,7 @@
 rpdb - remote debugger based on pdb
 ===================================
 
-rpbm is a wrapper around pdb that re-routes stdin and stdout to a socket
+rpdb is a wrapper around pdb that re-routes stdin and stdout to a socket
 handler. By default it opens the debugger on port 4444::
 
     import rpdb; rpdb.set_trace()
