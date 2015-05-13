@@ -1,7 +1,8 @@
 0.1.6 (YYYY-MM-DD)
 ==================
 
- - Give access to attributes of stdin and stdout (@fuxpavel).
+ - Give access to attributes of stdin and stdout (by @fuxpavel).
+ - Add rpdb.post_mortem(), similar to pdb.post_mortem() (by @CamDavidsonPilon).
 
 0.1.5 (2014-10-16)
 ==================

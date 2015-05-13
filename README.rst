@@ -49,6 +49,7 @@ Bertrand Janin <b@janin.com> - http://tamentis.com/
 
 With contributions from (chronological, latest first):
 
+ - Cameron Davidson-Pilon - @CamDavidsonPilon
  - Pavel Fux - @fuxpavel
  - Ken Manheimer - @kenmanheimer
  - Steven Willis - @onlynone
