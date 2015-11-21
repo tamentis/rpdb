@@ -1,15 +1,17 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 import os
 from distutils.core import setup
+from io import open
 
 
 here = os.path.abspath(os.path.dirname(__file__))
 try:
-    README = open(os.path.join(here, 'README.rst')).read()
+    README = open(os.path.join(here, 'README.rst'), encoding='utf8').read()
     CHANGES = open(os.path.join(here, 'CHANGES.txt')).read()
 except IOError:
     README = CHANGES = ''
+
 
 setup(
     name="rpdb",
