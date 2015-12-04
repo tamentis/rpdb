@@ -6,8 +6,13 @@ __version__ = "0.1.6"
 import pdb
 import socket
 import threading
+import signal
 import sys
 import traceback
+from functools import partial
+
+DEFAULT_ADDR = "127.0.0.1"
+DEFAULT_PORT = 4444
 
 
 class FileObjectWrapper(object):
@@ -27,7 +32,7 @@ class FileObjectWrapper(object):
 
 class Rpdb(pdb.Pdb):
 
-    def __init__(self, addr="127.0.0.1", port=4444):
+    def __init__(self, addr=DEFAULT_ADDR, port=DEFAULT_PORT):
         """Initialize the socket and initialize pdb."""
 
         # Backup stdin and stdout before replacing them by the socket handle
@@ -89,7 +94,7 @@ class Rpdb(pdb.Pdb):
             self.shutdown()
 
 
-def set_trace(addr="127.0.0.1", port=4444):
+def set_trace(addr=DEFAULT_ADDR, port=DEFAULT_PORT, frame=None):
     """Wrapper function to keep the same import x; x.set_trace() interface.
 
     We catch all the possible exceptions from pdb and cleanup.
@@ -106,13 +111,21 @@ def set_trace(addr="127.0.0.1", port=4444):
             # Port occupied by something else.
             raise
     try:
-        debugger.set_trace(sys._getframe().f_back)
+        debugger.set_trace(frame or sys._getframe().f_back)
     except Exception:
         traceback.print_exc()
 
 
-def post_mortem(addr="127.0.0.1", port=4444):
-    
+def _trap_handler(addr, port, signum, frame):
+    set_trace(addr, port, frame=frame)
+
+
+def handle_trap(addr=DEFAULT_ADDR, port=DEFAULT_PORT):
+    """Register rpdb as the SIGTRAP signal handler"""
+    signal.signal(signal.SIGTRAP, partial(_trap_handler, addr, port))
+
+
+def post_mortem(addr=DEFAULT_ADDR, port=DEFAULT_PORT):
     debugger = Rpdb(addr=addr, port=port)
     type, value, tb = sys.exc_info()
     traceback.print_exc()

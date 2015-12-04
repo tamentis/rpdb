@@ -36,6 +36,22 @@ Installation in a Tomcat webapp
 Just copy the rpdb directory (the one with the __init__.py file) in your
 WEB-INF/lib/Lib folder along with the standard Jython library (required).
 
+Trigger rpdb with signal
+------------------------
+
+`set_trace()` can be triggered at any time by using the TRAP signal handler.
+This allows you to debug a running process independantly of a specific failure
+or breakpoint::
+
+    import rpdb
+    rpdb.handle_trap()
+
+    # As with set_trace, you can optionally specify addr and port
+    rpdb.handle_trap("0.0.0.0", 54321)
+
+Calling `handle_trap` will overwrite the existing handler for SIGTRAP if one has
+already been defined in your application.
+
 Known bugs
 ----------
   - The socket is not always closed properly so you will need to ^C in netcat
@@ -57,6 +73,7 @@ With contributions from (chronological, latest first):
  - Cyprien Le Pannérer <clepannerer@edd.fr>
  - k4ml <kamal.mustafa@gmail.com>
  - Sean M. Collins <sean@coreitpro.com>
+ - Sean Myers <sean.myers@redhat.com>
 
 This is inspired by:
 
