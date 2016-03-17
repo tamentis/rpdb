@@ -3,6 +3,7 @@
 __author__ = "Bertrand Janin <b@janin.com>"
 __version__ = "0.1.6"
 
+import logging
 import pdb
 import socket
 import threading
@@ -10,6 +11,9 @@ import signal
 import sys
 import traceback
 from functools import partial
+
+_logger = logging.getLogger(__name__)
+_logger.addHandler(logging.NullHandler())
 
 DEFAULT_ADDR = "127.0.0.1"
 DEFAULT_PORT = 4444
@@ -56,12 +60,7 @@ class Rpdb(object):
         self.skt.bind((addr, port))
         self.skt.listen(1)
 
-        # Writes to stdout are forbidden in mod_wsgi environments
-        try:
-            sys.stderr.write("pdb is running on %s:%d\n"
-                             % self.skt.getsockname())
-        except IOError:
-            pass
+        _logger.info("pdb is running on %s:%d" % self.skt.getsockname())
 
         self._pdb = None
 
@@ -81,6 +80,7 @@ class Rpdb(object):
         sys.stdout = sys.stdin = handle
         self.handle = handle
         OCCUPIED.claim(self.port, self.handle)
+        _logger.debug("pdb client connected")
 
     def shutdown(self):
         """Revert stdin and stdout, close the socket."""
@@ -110,7 +110,7 @@ def set_trace(addr=DEFAULT_ADDR, port=DEFAULT_PORT, frame=None):
     except socket.error:
         if OCCUPIED.is_claimed(port, sys.stdout):
             # rpdb is already on this port - good enough, let it go on:
-            sys.stdout.write("(Recurrent rpdb invocation ignored)\n")
+            _logger.info("Recurrent rpdb invocation ignored")
             return
         else:
             # Port occupied by something else.
