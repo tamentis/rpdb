@@ -30,11 +30,21 @@ class FileObjectWrapper(object):
         return attr
 
 
-class Rpdb(pdb.Pdb):
+def finally_shutdown(owner, method):
+    """Wrapper to a clean-up happens after `method` is called."""
+    def _wrapper(*args, **kwargs):
+        """Clean-up after calling method."""
+        try:
+            return method(*args, **kwargs)
+        finally:
+            owner.shutdown()
+    return _wrapper
+
+
+class Rpdb(object):
+    """Wrap a Pdb object with a remote session."""
 
     def __init__(self, addr=DEFAULT_ADDR, port=DEFAULT_PORT):
-        """Initialize the socket and initialize pdb."""
-
         # Backup stdin and stdout before replacing them by the socket handle
         self.old_stdout = sys.stdout
         self.old_stdin = sys.stdin
@@ -53,14 +63,24 @@ class Rpdb(pdb.Pdb):
         except IOError:
             pass
 
+        self._pdb = None
+
+    def start_debugger(self):
+        """Accept external connections and run Pdb."""
         (clientsocket, address) = self.skt.accept()
         handle = clientsocket.makefile('rw')
-        pdb.Pdb.__init__(self, completekey='tab',
-                         stdin=FileObjectWrapper(handle, self.old_stdin),
-                         stdout=FileObjectWrapper(handle, self.old_stdin))
+        self._pdb = pdb.Pdb(completekey='tab',
+                            stdin=FileObjectWrapper(handle, self.old_stdin),
+                            stdout=FileObjectWrapper(handle, self.old_stdout))
+        # wrap the methods that need extra logic
+        for method in ('do_continue', 'do_c', 'do_cont',
+                       'do_quit', 'do_exit', 'do_q',
+                       'do_EOF'):
+            setattr(self._pdb, method, finally_shutdown(self, getattr(self._pdb, method)))
+
         sys.stdout = sys.stdin = handle
         self.handle = handle
-        OCCUPIED.claim(port, sys.stdout)
+        OCCUPIED.claim(self.port, self.handle)
 
     def shutdown(self):
         """Revert stdin and stdout, close the socket."""
@@ -71,30 +91,11 @@ class Rpdb(pdb.Pdb):
         self.skt.shutdown(socket.SHUT_RDWR)
         self.skt.close()
 
-    def do_continue(self, arg):
-        """Clean-up and do underlying continue."""
-        try:
-            return pdb.Pdb.do_continue(self, arg)
-        finally:
-            self.shutdown()
-
-    do_c = do_cont = do_continue
-
-    def do_quit(self, arg):
-        """Clean-up and do underlying quit."""
-        try:
-            return pdb.Pdb.do_quit(self, arg)
-        finally:
-            self.shutdown()
-
-    do_q = do_exit = do_quit
-
-    def do_EOF(self, arg):
-        """Clean-up and do underlying EOF."""
-        try:
-            return pdb.Pdb.do_EOF(self, arg)
-        finally:
-            self.shutdown()
+    def __getattr__(self, name):
+        """Pass on requests to the Pdb object."""
+        if hasattr(self._pdb, name):
+            return getattr(self._pdb, name)
+        return self.__getattribute__(self, name)
 
 
 def set_trace(addr=DEFAULT_ADDR, port=DEFAULT_PORT, frame=None):
@@ -105,6 +106,7 @@ def set_trace(addr=DEFAULT_ADDR, port=DEFAULT_PORT, frame=None):
     """
     try:
         debugger = Rpdb(addr=addr, port=port)
+        debugger.start_debugger()
     except socket.error:
         if OCCUPIED.is_claimed(port, sys.stdout):
             # rpdb is already on this port - good enough, let it go on:
@@ -132,6 +134,7 @@ def post_mortem(addr=DEFAULT_ADDR, port=DEFAULT_PORT):
     debugger = Rpdb(addr=addr, port=port)
     type, value, tb = sys.exc_info()
     traceback.print_exc()
+    debugger.start_debugger()
     debugger.reset()
     debugger.interaction(None, tb)
 
