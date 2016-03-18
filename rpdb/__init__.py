@@ -59,13 +59,16 @@ class Rpdb(pdb.Pdb):
                          stdin=FileObjectWrapper(handle, self.old_stdin),
                          stdout=FileObjectWrapper(handle, self.old_stdin))
         sys.stdout = sys.stdin = handle
+        self.handle = handle
         OCCUPIED.claim(port, sys.stdout)
 
     def shutdown(self):
         """Revert stdin and stdout, close the socket."""
         sys.stdout = self.old_stdout
         sys.stdin = self.old_stdin
+        self.handle.close()
         OCCUPIED.unclaim(self.port)
+        self.skt.shutdown(socket.SHUT_RDWR)
         self.skt.close()
 
     def do_continue(self, arg):
