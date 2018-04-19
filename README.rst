@@ -21,6 +21,12 @@ to continue is to access rpdb using telnet, netcat, etc..::
 
     nc 127.0.0.1 4444
 
+Besides addr and port, the `Rpdb` class can also accept `encoding`::
+
+    import rpdb
+    debugger = rpdb.Rpdb(addr='127.0.0.1', port=12345, encoding='UTF-8')
+    debugger.set_trace()
+
 Installation in CPython (standard Python)
 -----------------------------------------
 

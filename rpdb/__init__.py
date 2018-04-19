@@ -15,24 +15,33 @@ DEFAULT_ADDR = "127.0.0.1"
 DEFAULT_PORT = 4444
 
 
-class FileObjectWrapper(object):
-    def __init__(self, fileobject, stdio):
-        self._obj = fileobject
-        self._io = stdio
+def makefile(clientsocket, *args, **kwargs):
+    # Return a filetype object
+    # Python 2 makefile doesn't support encoding parameter
+    if hasattr(socket, '_fileobject'):
+        class _fileobject(socket._fileobject):
+            __slots__ = socket._fileobject.__slots__ + ['encoding', 'errors']
+            errors = None
 
-    def __getattr__(self, attr):
-        if hasattr(self._obj, attr):
-            attr = getattr(self._obj, attr)
-        elif hasattr(self._io, attr):
-            attr = getattr(self._io, attr)
-        else:
-            raise AttributeError("Attribute %s is not found" % attr)
-        return attr
+            def __init__(self, *args, **kwargs):
+                self.encoding = kwargs.pop('encoding', '')
+                super(_fileobject, self).__init__(*args, **kwargs)
+
+            def isatty(self):
+                return True
+        return _fileobject(clientsocket._sock, *args, **kwargs)
+
+    # Python 3 can set encoding on makefile but not isatty or errors
+    result = clientsocket.makefile(*args, **kwargs)
+    if not hasattr(result, 'isatty'):
+        setattr(type(result), 'isatty', lambda self: True)
+        setattr(type(result), 'errors', None)
+    return result
 
 
 class Rpdb(pdb.Pdb):
 
-    def __init__(self, addr=DEFAULT_ADDR, port=DEFAULT_PORT):
+    def __init__(self, addr=DEFAULT_ADDR, port=DEFAULT_PORT, encoding=None):
         """Initialize the socket and initialize pdb."""
 
         # Backup stdin and stdout before replacing them by the socket handle
@@ -54,10 +63,9 @@ class Rpdb(pdb.Pdb):
             pass
 
         (clientsocket, address) = self.skt.accept()
-        handle = clientsocket.makefile('rw')
-        pdb.Pdb.__init__(self, completekey='tab',
-                         stdin=FileObjectWrapper(handle, self.old_stdin),
-                         stdout=FileObjectWrapper(handle, self.old_stdin))
+        encoding = sys.stdin.encoding if encoding is None else encoding
+        handle = makefile(clientsocket, 'rw', encoding=encoding)
+        pdb.Pdb.__init__(self, completekey='tab', stdin=handle, stdout=handle)
         sys.stdout = sys.stdin = handle
         self.handle = handle
         OCCUPIED.claim(port, sys.stdout)
