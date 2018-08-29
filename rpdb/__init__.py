@@ -68,7 +68,7 @@ class Rpdb(pdb.Pdb):
         pdb.Pdb.__init__(self, completekey='tab', stdin=handle, stdout=handle)
         sys.stdout = sys.stdin = handle
         self.handle = handle
-        OCCUPIED.claim(port, sys.stdout)
+        OCCUPIED.claim(port, self)
 
     def shutdown(self):
         """Revert stdin and stdout, close the socket."""
@@ -79,23 +79,22 @@ class Rpdb(pdb.Pdb):
         self.skt.shutdown(socket.SHUT_RDWR)
         self.skt.close()
 
-    def do_continue(self, arg):
-        """Clean-up and do underlying continue."""
+    def do_quit(self, arg):
+        """Quit debugger but let application continue running."""
         try:
+            self.clear_all_breaks()
             return pdb.Pdb.do_continue(self, arg)
         finally:
             self.shutdown()
 
-    do_c = do_cont = do_continue
+    do_q = do_quit
 
-    def do_quit(self, arg):
-        """Clean-up and do underlying quit."""
+    def do_exit(self, arg):
+        """Abort program being executed."""
         try:
             return pdb.Pdb.do_quit(self, arg)
         finally:
             self.shutdown()
-
-    do_q = do_exit = do_quit
 
     def do_EOF(self, arg):
         """Clean-up and do underlying EOF."""
@@ -114,11 +113,12 @@ def set_trace(addr=DEFAULT_ADDR, port=DEFAULT_PORT, frame=None):
     try:
         debugger = Rpdb(addr=addr, port=port)
     except socket.error:
-        if OCCUPIED.is_claimed(port, sys.stdout):
-            # rpdb is already on this port - good enough, let it go on:
-            sys.stdout.write("(Recurrent rpdb invocation ignored)\n")
-            return
-        else:
+        debugger = OCCUPIED.get_my_rpdb(port)
+        if not debugger:
+            if OCCUPIED.is_claimed(port):
+                # rpdb is already on this port - good enough, let it go on:
+                sys.stdout.write("(Recurrent rpdb invocation ignored)\n")
+                return
             # Port occupied by something else.
             raise
     try:
@@ -160,14 +160,24 @@ class OccupiedPorts(object):
 
     def claim(self, port, handle):
         self.lock.acquire(True)
-        self.claims[port] = id(handle)
+        self.claims[port] = (handle, self.thread_id)
         self.lock.release()
 
-    def is_claimed(self, port, handle):
+    def is_claimed(self, port):
         self.lock.acquire(True)
-        got = (self.claims.get(port) == id(handle))
+        got = port in self.claims
         self.lock.release()
         return got
+
+    @property
+    def thread_id(self):
+        return threading.current_thread().ident
+
+    def get_my_rpdb(self, port):
+        rpdb_inst, thread_id = self.claims[port]
+        if thread_id == self.thread_id:
+            return rpdb_inst
+        return None
 
     def unclaim(self, port):
         self.lock.acquire(True)
