@@ -72,6 +72,7 @@ class Rpdb(pdb.Pdb):
 
     def shutdown(self):
         """Revert stdin and stdout, close the socket."""
+        sys.stdout.write('Closing port %s\n' % self.port)
         sys.stdout = self.old_stdout
         sys.stdin = self.old_stdin
         self.handle.close()
