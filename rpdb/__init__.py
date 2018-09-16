@@ -15,24 +15,33 @@ DEFAULT_ADDR = "127.0.0.1"
 DEFAULT_PORT = 4444
 
 
-class FileObjectWrapper(object):
-    def __init__(self, fileobject, stdio):
-        self._obj = fileobject
-        self._io = stdio
+def makefile(clientsocket, *args, **kwargs):
+    # Return a filetype object
+    # Python 2 makefile doesn't support encoding parameter
+    if hasattr(socket, '_fileobject'):
+        class _fileobject(socket._fileobject):
+            __slots__ = socket._fileobject.__slots__ + ['encoding', 'errors']
+            errors = None
 
-    def __getattr__(self, attr):
-        if hasattr(self._obj, attr):
-            attr = getattr(self._obj, attr)
-        elif hasattr(self._io, attr):
-            attr = getattr(self._io, attr)
-        else:
-            raise AttributeError("Attribute %s is not found" % attr)
-        return attr
+            def __init__(self, *args, **kwargs):
+                self.encoding = kwargs.pop('encoding', '')
+                super(_fileobject, self).__init__(*args, **kwargs)
+
+            def isatty(self):
+                return True
+        return _fileobject(clientsocket._sock, *args, **kwargs)
+
+    # Python 3 can set encoding on makefile but not isatty or errors
+    result = clientsocket.makefile(*args, **kwargs)
+    if not hasattr(result, 'isatty'):
+        setattr(type(result), 'isatty', lambda self: True)
+        setattr(type(result), 'errors', None)
+    return result
 
 
 class Rpdb(pdb.Pdb):
 
-    def __init__(self, addr=DEFAULT_ADDR, port=DEFAULT_PORT):
+    def __init__(self, addr=DEFAULT_ADDR, port=DEFAULT_PORT, encoding=None):
         """Initialize the socket and initialize pdb."""
 
         # Backup stdin and stdout before replacing them by the socket handle
@@ -54,16 +63,16 @@ class Rpdb(pdb.Pdb):
             pass
 
         (clientsocket, address) = self.skt.accept()
-        handle = clientsocket.makefile('rw')
-        pdb.Pdb.__init__(self, completekey='tab',
-                         stdin=FileObjectWrapper(handle, self.old_stdin),
-                         stdout=FileObjectWrapper(handle, self.old_stdin))
+        encoding = sys.stdin.encoding if encoding is None else encoding
+        handle = makefile(clientsocket, 'rw', encoding=encoding)
+        pdb.Pdb.__init__(self, completekey='tab', stdin=handle, stdout=handle)
         sys.stdout = sys.stdin = handle
         self.handle = handle
-        OCCUPIED.claim(port, sys.stdout)
+        OCCUPIED.claim(port, self)
 
     def shutdown(self):
         """Revert stdin and stdout, close the socket."""
+        sys.stdout.write('Closing port %s\n' % self.port)
         sys.stdout = self.old_stdout
         sys.stdin = self.old_stdin
         self.handle.close()
@@ -71,23 +80,22 @@ class Rpdb(pdb.Pdb):
         self.skt.shutdown(socket.SHUT_RDWR)
         self.skt.close()
 
-    def do_continue(self, arg):
-        """Clean-up and do underlying continue."""
+    def do_quit(self, arg):
+        """Quit debugger but let application continue running."""
         try:
+            self.clear_all_breaks()
             return pdb.Pdb.do_continue(self, arg)
         finally:
             self.shutdown()
 
-    do_c = do_cont = do_continue
+    do_q = do_quit
 
-    def do_quit(self, arg):
-        """Clean-up and do underlying quit."""
+    def do_exit(self, arg):
+        """Abort program being executed."""
         try:
             return pdb.Pdb.do_quit(self, arg)
         finally:
             self.shutdown()
-
-    do_q = do_exit = do_quit
 
     def do_EOF(self, arg):
         """Clean-up and do underlying EOF."""
@@ -106,11 +114,12 @@ def set_trace(addr=DEFAULT_ADDR, port=DEFAULT_PORT, frame=None):
     try:
         debugger = Rpdb(addr=addr, port=port)
     except socket.error:
-        if OCCUPIED.is_claimed(port, sys.stdout):
-            # rpdb is already on this port - good enough, let it go on:
-            sys.stdout.write("(Recurrent rpdb invocation ignored)\n")
-            return
-        else:
+        debugger = OCCUPIED.get_my_rpdb(port)
+        if not debugger:
+            if OCCUPIED.is_claimed(port):
+                # rpdb is already on this port - good enough, let it go on:
+                sys.stdout.write("(Recurrent rpdb invocation ignored)\n")
+                return
             # Port occupied by something else.
             raise
     try:
@@ -152,14 +161,24 @@ class OccupiedPorts(object):
 
     def claim(self, port, handle):
         self.lock.acquire(True)
-        self.claims[port] = id(handle)
+        self.claims[port] = (handle, self.thread_id)
         self.lock.release()
 
-    def is_claimed(self, port, handle):
+    def is_claimed(self, port):
         self.lock.acquire(True)
-        got = (self.claims.get(port) == id(handle))
+        got = port in self.claims
         self.lock.release()
         return got
+
+    @property
+    def thread_id(self):
+        return threading.current_thread().ident
+
+    def get_my_rpdb(self, port):
+        rpdb_inst, thread_id = self.claims[port]
+        if thread_id == self.thread_id:
+            return rpdb_inst
+        return None
 
     def unclaim(self, port):
         self.lock.acquire(True)

@@ -21,6 +21,22 @@ to continue is to access rpdb using telnet, netcat, etc..::
 
     nc 127.0.0.1 4444
 
+Besides addr and port, the `Rpdb` class can also accept `encoding`::
+
+    import rpdb
+    debugger = rpdb.Rpdb(addr='127.0.0.1', port=12345, encoding='UTF-8')
+    debugger.set_trace()
+
+In rpdb continue and quit have different meanings than in the standard
+interpereter:
+
+- continue: Doesn't close the socket, and the application will continue to run
+  stopping on other breakpoints or calls to set_trace.
+
+- quit: Quits the debugging, clearing breakpoints, and closing the socket.
+
+- exit: Abort the running application.
+
 Installation in CPython (standard Python)
 -----------------------------------------
 
