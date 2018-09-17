@@ -6,6 +6,10 @@ handler. By default it opens the debugger on port 4444::
 
     import rpdb; rpdb.set_trace()
 
+For using IPython debugger
+
+    import rpdb; rpdb.set_trace(IPython=True)
+
 But you can change that by simply instantiating Rpdb manually::
 
     import rpdb
