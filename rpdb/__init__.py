@@ -10,14 +10,19 @@ import signal
 import sys
 import traceback
 from functools import partial
-from IPython.core.debugger import Pdb
+
+try:
+    from IPython.core.debugger import Pdb
+    IPYTHON_ENABLE = True
+except ImportError:
+    IPYTHON_ENABLE = False
 
 DEFAULT_ADDR = "127.0.0.1"
 DEFAULT_PORT = 4444
-_IPython = False
 
 
 class FileObjectWrapper(object):
+
     def __init__(self, fileobject, stdio):
         self._obj = fileobject
         self._io = stdio
@@ -32,15 +37,17 @@ class FileObjectWrapper(object):
         return attr
 
 
-class Rpdb(pdb.Pdb):
+class Rpdb:
 
-    def __init__(self, addr=DEFAULT_ADDR, port=DEFAULT_PORT):
+    def __init__(self, addr=DEFAULT_ADDR, port=DEFAULT_PORT, ipython=False):
         """Initialize the socket and initialize pdb."""
 
         # Backup stdin and stdout before replacing them by the socket handle
         self.old_stdout = sys.stdout
         self.old_stdin = sys.stdin
         self.port = port
+
+        self.debugger = Pdb if ipython and IPYTHON_ENABLE else pdb.Pdb
 
         # Open a 'reusable' socket to let the webapp reload on the same port
         self.skt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -57,9 +64,9 @@ class Rpdb(pdb.Pdb):
 
         (clientsocket, address) = self.skt.accept()
         handle = clientsocket.makefile('rw')
-        pdb.Pdb.__init__(self, completekey='tab',
-                         stdin=FileObjectWrapper(handle, self.old_stdin),
-                         stdout=FileObjectWrapper(handle, self.old_stdin))
+        self.debugger.__init__(self, completekey='tab',
+                               stdin=FileObjectWrapper(handle, self.old_stdin),
+                               stdout=FileObjectWrapper(handle, self.old_stdin))
         sys.stdout = sys.stdin = handle
         self.handle = handle
         OCCUPIED.claim(port, sys.stdout)
@@ -76,7 +83,7 @@ class Rpdb(pdb.Pdb):
     def do_continue(self, arg):
         """Clean-up and do underlying continue."""
         try:
-            return pdb.Pdb.do_continue(self, arg)
+            return self.debugger.do_continue(self, arg)
         finally:
             self.shutdown()
 
@@ -85,7 +92,7 @@ class Rpdb(pdb.Pdb):
     def do_quit(self, arg):
         """Clean-up and do underlying quit."""
         try:
-            return pdb.Pdb.do_quit(self, arg)
+            return self.debugger.do_quit(self, arg)
         finally:
             self.shutdown()
 
@@ -94,88 +101,30 @@ class Rpdb(pdb.Pdb):
     def do_EOF(self, arg):
         """Clean-up and do underlying EOF."""
         try:
-            return pdb.Pdb.do_EOF(self, arg)
+            return self.debugger.do_EOF(self, arg)
         finally:
             self.shutdown()
 
 
-class IRpdb(Pdb):
+def get_debugger_class(base):
+    class Debugger(base, Rpdb):
 
-    def __init__(self, addr=DEFAULT_ADDR, port=DEFAULT_PORT):
-        """Initialize the socket and initialize pdb."""
+        def __init__(self, addr=DEFAULT_ADDR, port=DEFAULT_PORT, ipython=False):
+            Rpdb.__init__(self, addr, port, ipython)
 
-        # Backup stdin and stdout before replacing them by the socket handle
-        self.old_stdout = sys.stdout
-        self.old_stdin = sys.stdin
-        self.port = port
-
-        # Open a 'reusable' socket to let the webapp reload on the same port
-        self.skt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.skt.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
-        self.skt.bind((addr, port))
-        self.skt.listen(1)
-
-        # Writes to stdout are forbidden in mod_wsgi environments
-        try:
-            sys.stderr.write("pdb is running on %s:%d\n"
-                             % self.skt.getsockname())
-        except IOError:
-            pass
-
-        (clientsocket, address) = self.skt.accept()
-        handle = clientsocket.makefile('rw')
-        Pdb.__init__(self, completekey='tab',
-                     stdin=FileObjectWrapper(handle, self.old_stdin),
-                     stdout=FileObjectWrapper(handle, self.old_stdin))
-        sys.stdout = sys.stdin = handle
-        self.handle = handle
-        OCCUPIED.claim(port, sys.stdout)
-
-    def shutdown(self):
-        """Revert stdin and stdout, close the socket."""
-        sys.stdout = self.old_stdout
-        sys.stdin = self.old_stdin
-        self.handle.close()
-        OCCUPIED.unclaim(self.port)
-        self.skt.shutdown(socket.SHUT_RDWR)
-        self.skt.close()
-
-    def do_continue(self, arg):
-        """Clean-up and do underlying continue."""
-        try:
-            return Pdb.do_continue(self, arg)
-        finally:
-            self.shutdown()
-
-    do_c = do_cont = do_continue
-
-    def do_quit(self, arg):
-        """Clean-up and do underlying quit."""
-        try:
-            return Pdb.do_quit(self, arg)
-        finally:
-            self.shutdown()
-
-    do_q = do_exit = do_quit
-
-    def do_EOF(self, arg):
-        """Clean-up and do underlying EOF."""
-        try:
-            return Pdb.do_EOF(self, arg)
-        finally:
-            self.shutdown()
+    return Debugger
 
 
-def set_trace(addr=DEFAULT_ADDR, port=DEFAULT_PORT, frame=None, IPython=False):
+def set_trace(addr=DEFAULT_ADDR, port=DEFAULT_PORT, frame=None, ipython=False):
     """Wrapper function to keep the same import x; x.set_trace() interface.
 
     We catch all the possible exceptions from pdb and cleanup.
 
     """
     try:
-        _IPython = IPython
-        debugger = IRpdb(addr=addr, port=port) if IPython else Rpdb(
-            addr=addr, port=port)
+        debugger_class = Pdb if ipython and IPYTHON_ENABLE else pdb.Pdb
+        Rpdb = get_debugger_class(debugger_class)
+        debugger = Rpdb(addr=addr, port=port, ipython=ipython)
     except socket.error:
         if OCCUPIED.is_claimed(port, sys.stdout):
             # rpdb is already on this port - good enough, let it go on:
@@ -199,9 +148,10 @@ def handle_trap(addr=DEFAULT_ADDR, port=DEFAULT_PORT):
     signal.signal(signal.SIGTRAP, partial(_trap_handler, addr, port))
 
 
-def post_mortem(addr=DEFAULT_ADDR, port=DEFAULT_PORT):
-    debugger = IRpdb(addr=addr, port=port) if _IPython else Rpdb(
-        addr=addr, port=port)
+def post_mortem(addr=DEFAULT_ADDR, port=DEFAULT_PORT, ipython=False):
+    debugger_class = Pdb if ipython and IPYTHON_ENABLE else pdb.Pdb
+    Rpdb = get_debugger_class(debugger_class)
+    debugger = Rpdb(addr=addr, port=port)
     type, value, tb = sys.exc_info()
     traceback.print_exc()
     debugger.reset()
