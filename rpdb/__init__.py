@@ -12,10 +12,10 @@ import traceback
 from functools import partial
 
 try:
-    from IPython.core.debugger import Pdb
-    IPYTHON_ENABLE = True
+    from IPython.core.debugger import IPdb
+    ipython_available = True
 except ImportError:
-    IPYTHON_ENABLE = False
+    ipython_available = False
 
 DEFAULT_ADDR = "127.0.0.1"
 DEFAULT_PORT = 4444
@@ -47,7 +47,7 @@ class Rpdb:
         self.old_stdin = sys.stdin
         self.port = port
 
-        self.debugger = Pdb if ipython and IPYTHON_ENABLE else pdb.Pdb
+        self.debugger = IPdb if ipython and ipython_available else pdb.Pdb
 
         # Open a 'reusable' socket to let the webapp reload on the same port
         self.skt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -122,7 +122,7 @@ def set_trace(addr=DEFAULT_ADDR, port=DEFAULT_PORT, frame=None, ipython=False):
 
     """
     try:
-        debugger_class = Pdb if ipython and IPYTHON_ENABLE else pdb.Pdb
+        debugger_class = IPdb if ipython and ipython_available else pdb.Pdb
         Rpdb = get_debugger_class(debugger_class)
         debugger = Rpdb(addr=addr, port=port, ipython=ipython)
     except socket.error:
@@ -149,7 +149,7 @@ def handle_trap(addr=DEFAULT_ADDR, port=DEFAULT_PORT):
 
 
 def post_mortem(addr=DEFAULT_ADDR, port=DEFAULT_PORT, ipython=False):
-    debugger_class = Pdb if ipython and IPYTHON_ENABLE else pdb.Pdb
+    debugger_class = Pdb if ipython and ipython_available else pdb.IPdb
     Rpdb = get_debugger_class(debugger_class)
     debugger = Rpdb(addr=addr, port=port)
     type, value, tb = sys.exc_info()
