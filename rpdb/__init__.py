@@ -11,11 +11,18 @@ import sys
 import traceback
 from functools import partial
 
+try:
+    from IPython.core.debugger import IPdb
+    ipython_available = True
+except ImportError:
+    ipython_available = False
+
 DEFAULT_ADDR = "127.0.0.1"
 DEFAULT_PORT = 4444
 
 
 class FileObjectWrapper(object):
+
     def __init__(self, fileobject, stdio):
         self._obj = fileobject
         self._io = stdio
@@ -30,15 +37,17 @@ class FileObjectWrapper(object):
         return attr
 
 
-class Rpdb(pdb.Pdb):
+class Rpdb:
 
-    def __init__(self, addr=DEFAULT_ADDR, port=DEFAULT_PORT):
+    def __init__(self, addr=DEFAULT_ADDR, port=DEFAULT_PORT, ipython=False):
         """Initialize the socket and initialize pdb."""
 
         # Backup stdin and stdout before replacing them by the socket handle
         self.old_stdout = sys.stdout
         self.old_stdin = sys.stdin
         self.port = port
+
+        self.debugger = IPdb if ipython and ipython_available else pdb.Pdb
 
         # Open a 'reusable' socket to let the webapp reload on the same port
         self.skt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -55,9 +64,9 @@ class Rpdb(pdb.Pdb):
 
         (clientsocket, address) = self.skt.accept()
         handle = clientsocket.makefile('rw')
-        pdb.Pdb.__init__(self, completekey='tab',
-                         stdin=FileObjectWrapper(handle, self.old_stdin),
-                         stdout=FileObjectWrapper(handle, self.old_stdin))
+        self.debugger.__init__(self, completekey='tab',
+                               stdin=FileObjectWrapper(handle, self.old_stdin),
+                               stdout=FileObjectWrapper(handle, self.old_stdin))
         sys.stdout = sys.stdin = handle
         self.handle = handle
         OCCUPIED.claim(port, sys.stdout)
@@ -74,7 +83,7 @@ class Rpdb(pdb.Pdb):
     def do_continue(self, arg):
         """Clean-up and do underlying continue."""
         try:
-            return pdb.Pdb.do_continue(self, arg)
+            return self.debugger.do_continue(self, arg)
         finally:
             self.shutdown()
 
@@ -83,7 +92,7 @@ class Rpdb(pdb.Pdb):
     def do_quit(self, arg):
         """Clean-up and do underlying quit."""
         try:
-            return pdb.Pdb.do_quit(self, arg)
+            return self.debugger.do_quit(self, arg)
         finally:
             self.shutdown()
 
@@ -92,19 +101,30 @@ class Rpdb(pdb.Pdb):
     def do_EOF(self, arg):
         """Clean-up and do underlying EOF."""
         try:
-            return pdb.Pdb.do_EOF(self, arg)
+            return self.debugger.do_EOF(self, arg)
         finally:
             self.shutdown()
 
 
-def set_trace(addr=DEFAULT_ADDR, port=DEFAULT_PORT, frame=None):
+def get_debugger_class(base):
+    class Debugger(base, Rpdb):
+
+        def __init__(self, addr=DEFAULT_ADDR, port=DEFAULT_PORT, ipython=False):
+            Rpdb.__init__(self, addr, port, ipython)
+
+    return Debugger
+
+
+def set_trace(addr=DEFAULT_ADDR, port=DEFAULT_PORT, frame=None, ipython=False):
     """Wrapper function to keep the same import x; x.set_trace() interface.
 
     We catch all the possible exceptions from pdb and cleanup.
 
     """
     try:
-        debugger = Rpdb(addr=addr, port=port)
+        debugger_class = IPdb if ipython and ipython_available else pdb.Pdb
+        Rpdb = get_debugger_class(debugger_class)
+        debugger = Rpdb(addr=addr, port=port, ipython=ipython)
     except socket.error:
         if OCCUPIED.is_claimed(port, sys.stdout):
             # rpdb is already on this port - good enough, let it go on:
@@ -128,7 +148,9 @@ def handle_trap(addr=DEFAULT_ADDR, port=DEFAULT_PORT):
     signal.signal(signal.SIGTRAP, partial(_trap_handler, addr, port))
 
 
-def post_mortem(addr=DEFAULT_ADDR, port=DEFAULT_PORT):
+def post_mortem(addr=DEFAULT_ADDR, port=DEFAULT_PORT, ipython=False):
+    debugger_class = Pdb if ipython and ipython_available else pdb.IPdb
+    Rpdb = get_debugger_class(debugger_class)
     debugger = Rpdb(addr=addr, port=port)
     type, value, tb = sys.exc_info()
     traceback.print_exc()
@@ -165,6 +187,7 @@ class OccupiedPorts(object):
         self.lock.acquire(True)
         del self.claims[port]
         self.lock.release()
+
 
 # {port: sys.stdout} pairs to track recursive rpdb invocation on same port.
 # This scheme doesn't interfere with recursive invocations on separate ports -
