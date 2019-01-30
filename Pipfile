@@ -6,9 +6,12 @@ verify_ssl = true
 [dev-packages]
 flake8 = "*"
 pylint = "*"
+ipython = "*"
 
 [packages]
 pdbpp = "*"
+click = "*"
+aioconsole = "*"
 
 [requires]
 python_version = "3.7"

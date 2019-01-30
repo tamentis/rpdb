@@ -36,5 +36,9 @@ setup(
         "Programming Language :: Python :: 3.0",
         "Programming Language :: Python :: 3.1",
         "Topic :: Software Development :: Debuggers",
-    ]
+    ],
+    requires=['click'],
+    entry_points={
+        'console_scripts': ['arpdbclient=arpdbcli:smain']
+    }
 )
