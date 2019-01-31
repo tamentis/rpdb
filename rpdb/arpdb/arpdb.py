@@ -2,10 +2,10 @@ import pdb
 import sys
 import socket
 
-from .rpdb import Rpdb, FileObjectWrapper
+from ..rpdb import Rpdb, FileObjectWrapper
 
 
-class ARprb(Rpdb):
+class ARpdb(Rpdb):
     """ active version of RPDB. Instead of listning for connection, it actively
     tries to make one
 
@@ -13,21 +13,20 @@ class ARprb(Rpdb):
 
     def __init__(self, addr, port):
         # backup
-        self.old_stdout, self.old_stderr = sys.stdout, sys.stderr
-        self.addr = self.addr
-        self.port = self.port
+        self.old_stdout, self.old_stdin = sys.stdout, sys.stdin
+        self.addr, self.port = addr, port
 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.conect((self.addr, self.port))
+        self.sock.connect((self.addr, self.port))
 
         try:
             sys.stderr.write("rpdb tries to connect to %s:%s" % (self.addr, self.port))
         except IOError:
             pass
 
-        handle = self.sock.makefile("rw")
+        self.handle = self.sock.makefile("rw")
 
         pdb.Pdb.__init__(self, completekey='tab',
-                         stdin=FileObjectWrapper(handle, self.old_stdin),
-                         stdout=FileObjectWrapper(handle, self.old_stdin))
-        sys.stdout = sys.stdin = handle
+                         stdin=FileObjectWrapper(self.handle, self.old_stdin),
+                         stdout=FileObjectWrapper(self.handle, self.old_stdin))
+        sys.stdout = sys.stdin = self.handle

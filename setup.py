@@ -39,6 +39,7 @@ setup(
     ],
     requires=['click'],
     entry_points={
-        'console_scripts': ['arpdbclient=arpdbcli:smain']
-    }
+        'console_scripts': ['arpdb-cli-simple=rpdb.arpdb.cli:smain']
+    },
+    scripts=['scripts/arpdb-cli']
 )

@@ -5,7 +5,7 @@ import socket
 import sys
 import traceback
 
-from .arpdb import ARpdb
+from .arpdb.arpdb import ARpdb
 from .rpdb import Rpdb, OCCUPIED
 
 DEFAULT_ADDR = "127.0.0.1"

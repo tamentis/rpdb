@@ -12,6 +12,7 @@ ipython = "*"
 pdbpp = "*"
 click = "*"
 aioconsole = "*"
+readline = "*"
 
 [requires]
 python_version = "3.7"
