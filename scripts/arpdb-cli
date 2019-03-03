@@ -1,3 +1,44 @@
 #!/bin/sh
 
-rlwrap arpdb-cli-simple "$@"
+# rlwrap arpdb-cli-simple "$@"
+
+# yes, I know that I should use tempfile and remove it after. But I'm just too lazy
+SOCKNAME=/tmp/$$.sock
+PORT=9876
+ADDR=0.0.0.0
+
+SCRIPTNAME=$0
+
+while [ -n "$1" ];do
+    case "$1" in 
+        --server)
+            tmux new-window "socat - UNIX-LISTEN:$SOCKNAME"
+            socat - UNIX-CONNECT:$SOCKNAME
+            exit 0
+            ;;
+        --port)
+            shift
+            PORT="$1"
+            shift
+            ;;
+        --addr)
+            shift
+            ADDR="$1"
+            shift
+            ;;
+        -h)
+            echo "usage: $SCRIPTNAME [-h] [--addr <ip addr>] [--port <ip port>]"
+            echo ""
+            echo "listen on --addr address (default 0.0.0.0) and --port (default 9876)"
+            echo "for each incoming connection, open tmux new window with terminal to "
+            echo "that session"
+            echo "written for accepting reverse pdb connections"
+            echo ""
+            exit 1
+            ;;
+    esac
+done
+
+echo "[running server on $ADDR:$PORT]"
+tcpserver $ADDR $PORT $SCRIPTNAME --server
+
