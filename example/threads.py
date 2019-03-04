@@ -2,16 +2,20 @@
 """
 example of using active rpdb in multithreading environment
 """
+from random import random, randint
 import threading
+import time
 
 import rpdb
 
 
 def worker():
     """thread worker function"""
-    print('Worker')
     rpdb.set_trace(active=True, port=9876)
-    print("After")
+    num = randint(1, 100)
+    for x in range(num):
+        print(x)
+        time.sleep(x + random())
 
 
 def main():
