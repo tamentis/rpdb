@@ -16,6 +16,11 @@ while [ -n "$1" ];do
             socat - UNIX-CONNECT:$SOCKNAME
             exit 0
             ;;
+        --socket)
+            shift
+            SOCKNAME="$1"
+            shift
+            ;;
         --port)
             shift
             PORT="$1"
@@ -36,9 +41,13 @@ while [ -n "$1" ];do
             echo ""
             exit 1
             ;;
+        *)
+            echo "unknown parameter '$1'"
+            exit 1
+            ;;
     esac
 done
 
 echo "[running server on $ADDR:$PORT]"
-tcpserver $ADDR $PORT $SCRIPTNAME --server
+tcpserver $ADDR $PORT $SCRIPTNAME --server --socket=$SOCKNAME
 
