@@ -21,7 +21,7 @@ setup(
     author="Bertrand Janin",
     author_email="b@janin.com",
     url="http://tamentis.com/projects/rpdb",
-    packages=["rpdb"],
+    packages=["rpdb", "rpdb.arpdb"],
     classifiers=[
         "Development Status :: 4 - Beta",
         "Environment :: Console",

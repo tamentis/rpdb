@@ -118,7 +118,10 @@ class OccupiedPorts(object):
 
     def unclaim(self, port):
         self.lock.acquire(True)
-        del self.claims[port]
+        try:
+            del self.claims[port]
+        except KeyError:
+            pass
         self.lock.release()
 
 

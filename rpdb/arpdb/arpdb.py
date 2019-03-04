@@ -16,15 +16,15 @@ class ARpdb(Rpdb):
         self.old_stdout, self.old_stdin = sys.stdout, sys.stdin
         self.addr, self.port = addr, port
 
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.connect((self.addr, self.port))
+        self.skt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.skt.connect((self.addr, self.port))
 
         try:
             sys.stderr.write("rpdb tries to connect to %s:%s" % (self.addr, self.port))
         except IOError:
             pass
 
-        self.handle = self.sock.makefile("rw")
+        self.handle = self.skt.makefile("rw")
 
         pdb.Pdb.__init__(self, completekey='tab',
                          stdin=FileObjectWrapper(self.handle, self.old_stdin),
