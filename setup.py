@@ -38,8 +38,5 @@ setup(
         "Topic :: Software Development :: Debuggers",
     ],
     requires=['click'],
-    entry_points={
-        'console_scripts': ['arpdb-cli-simple=rpdb.arpdb.cli:smain']
-    },
     scripts=['scripts/arpdb-cli']
 )
