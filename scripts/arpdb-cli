@@ -1,40 +1,56 @@
-#!/bin/sh
+#!/bin/bash
 
 # rlwrap arpdb-cli-simple "$@"
 
-# yes, I know that I should use tempfile and remove it after. But I'm just too lazy
+# yes, I know that I should use tempfile and remove it after. But I'm just too lazy for now
 SOCKNAME=/tmp/$$.sock
-PORT=9876
+PORT=4444
 ADDR=0.0.0.0
 
 SCRIPTNAME=$0
 
+check() {
+    MISSING=""
+    for cmd in tmux socat tcpserver;do 
+        which $cmd >/dev/null || MISSING="$MISSING $cmd"
+    done
+
+    if [ -n "$MISSING" ];then
+        echo "Missing command(s) required to run script:$MISSING"
+        exit 1
+    fi
+}
+
 while [ -n "$1" ];do
     case "$1" in 
-        --server)
-            tmux new-window "socat - UNIX-LISTEN:$SOCKNAME"
-            socat - UNIX-CONNECT:$SOCKNAME
-            exit 0
-            ;;
         --socket)
             shift
             SOCKNAME="$1"
             shift
             ;;
+
+        --server)
+            tmux new-window "socat - UNIX-LISTEN:$SOCKNAME"
+            socat - UNIX-CONNECT:$SOCKNAME
+            exit 0
+            ;;
+
         --port)
             shift
             PORT="$1"
             shift
             ;;
+
         --addr)
             shift
             ADDR="$1"
             shift
             ;;
+
         -h)
             echo "usage: $SCRIPTNAME [-h] [--addr <ip addr>] [--port <ip port>]"
             echo ""
-            echo "listen on --addr address (default 0.0.0.0) and --port (default 9876)"
+            echo "listen on --addr address (default 0.0.0.0) and --port (default 4444)"
             echo "for each incoming connection, open tmux new window with terminal to "
             echo "that session"
             echo "written for accepting reverse pdb connections"
@@ -47,6 +63,8 @@ while [ -n "$1" ];do
             ;;
     esac
 done
+
+check || exit 1
 
 echo "[running server on $ADDR:$PORT]"
 tcpserver $ADDR $PORT $SCRIPTNAME --server --socket=$SOCKNAME

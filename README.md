@@ -1,8 +1,13 @@
-rpdb - remote debugger based on pdb
-===================================
+# rpdb - remote debugger based on pdb
 
 rpdb is a wrapper around pdb that re-routes stdin and stdout to a socket
-handler. By default it opens the debugger on port 4444::
+handler. 
+
+It has two modes: passive and active:
+
+## Passive mode
+
+By default it opens the debugger on port 4444::
 
     import rpdb; rpdb.set_trace()
 
@@ -20,6 +25,31 @@ Upon reaching `set_trace()`, your script will "hang" and the only way to get it
 to continue is to access rpdb using telnet, netcat, etc..::
 
     nc 127.0.0.1 4444
+
+## Active mode
+
+You can add `active=True` flag to `set_trace`, and then *rpdb* will connect to
+your terminal. It's useful when you want to debug app which can break
+simultaneously more than once in a time, and passive mode will refuse to open
+port 4444 again.
+
+Solution to the problem is:
+
+    # default host is 127.0.0.1 and default port is 4444
+    import rpdb; rpdb.set_trace(active=True)
+
+or, in more complex case, eg. when it's running in other host, in your docker, or sth like that
+
+    import rpdb
+    rpdb.set_trace(addr='192.168.1.120', port=12345)
+
+You should have arpdb-cli running on other side of your communication. 
+
+### arpdb-cli
+
+arpdb-cli is a simple tool, using tmux, tcpwrapper and socat to accept incoming
+connections and spawn tmux session for each incoming breakpoint. 
+
 
 Installation in CPython (standard Python)
 -----------------------------------------
