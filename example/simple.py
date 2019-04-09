@@ -4,7 +4,7 @@ print("aaaa")
 
 print("bbbb")
 
-rpdb.set_trace(active=True, port=9876)
+rpdb.set_trace(active=True)
 
 c = 20
 
