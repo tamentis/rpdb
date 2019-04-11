@@ -1,11 +1,17 @@
+#!/usr/bin/env python
+"""
+    example  of threads usage
+"""
 import concurrent.futures as cf
-import click
 import time
 
-SLEEPTIME = 5
+import click
+
+SLEEPTIME = 0.5
 
 
 def fib(num):
+    """ calc fibonacci in multithreaded way """
     import rpdb
     rpdb.set_trace(active=True)
     assert num >= 0
@@ -28,8 +34,9 @@ def fib(num):
 def main(number, sleeptime):
     global SLEEPTIME
     SLEEPTIME = sleeptime
-    print("fib(%s) = %s" % (number, fib(number)))
+    fibresult = fib(number)
+    print("fib(%s) = %s" % (number, fibresult))
 
 
 if __name__ == '__main__':
-    main()
+    main()  # pylint: disable=no-value-for-parameter

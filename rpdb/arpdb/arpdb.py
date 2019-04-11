@@ -20,7 +20,7 @@ class ARpdb(Rpdb):
         self.skt.connect((self.addr, self.port))
 
         try:
-            sys.stderr.write("rpdb tries to connect to %s:%s" % (self.addr, self.port))
+            sys.stderr.write("rpdb tries to connect to %s:%s\n\n" % (self.addr, self.port))
         except IOError:
             pass
 

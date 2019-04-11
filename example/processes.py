@@ -2,7 +2,7 @@ import concurrent.futures as cf
 import click
 import time
 
-SLEEPTIME = 5
+SLEEPTIME = 0.5
 
 
 def fib(num):
@@ -28,7 +28,8 @@ def fib(num):
 def main(number, sleeptime):
     global SLEEPTIME
     SLEEPTIME = sleeptime
-    print("fib(%s) = %s" % (number, fib(number)))
+    fibresult = fib(number)
+    print("fib(%s) = %s" % (number, fibresult))
 
 
 if __name__ == '__main__':
