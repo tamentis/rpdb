@@ -9,6 +9,7 @@ import threading
 import signal
 import sys
 import traceback
+import os
 from functools import partial
 
 DEFAULT_ADDR = "127.0.0.1"
@@ -36,8 +37,8 @@ class Rpdb(pdb.Pdb):
         """Initialize the socket and initialize pdb."""
 
         # Backup stdin and stdout before replacing them by the socket handle
-        self.old_stdout = sys.stdout
-        self.old_stdin = sys.stdin
+        self.dup_stdout_fileno = os.dup(sys.stdout.fileno())
+        self.dup_stdin_fileno = os.dup(sys.stdin.fileno())
         self.port = port
 
         # Open a 'reusable' socket to let the webapp reload on the same port
@@ -56,29 +57,23 @@ class Rpdb(pdb.Pdb):
         (clientsocket, address) = self.skt.accept()
         handle = clientsocket.makefile('rw')
         pdb.Pdb.__init__(self, completekey='tab',
-                         stdin=FileObjectWrapper(handle, self.old_stdin),
-                         stdout=FileObjectWrapper(handle, self.old_stdin))
-        sys.stdout = sys.stdin = handle
-        self.handle = handle
+                         stdin=FileObjectWrapper(handle, sys.stdin),
+                         stdout=FileObjectWrapper(handle, sys.stdin))
+        os.dup2(handle.fileno(), sys.stdout.fileno())
+        os.dup2(handle.fileno(), sys.stdin.fileno())
         OCCUPIED.claim(port, sys.stdout)
 
     def shutdown(self):
         """Revert stdin and stdout, close the socket."""
-        sys.stdout = self.old_stdout
-        sys.stdin = self.old_stdin
-        self.handle.close()
+        os.dup2(self.dup_stdout_fileno, sys.stdout.fileno())
+        os.dup2(self.dup_stdin_fileno, sys.stdin.fileno())
+        os.close(self.dup_stdout_fileno)
+        os.close(self.dup_stdout_fileno)
         OCCUPIED.unclaim(self.port)
         self.skt.shutdown(socket.SHUT_RDWR)
         self.skt.close()
 
-    def do_continue(self, arg):
-        """Clean-up and do underlying continue."""
-        try:
-            return pdb.Pdb.do_continue(self, arg)
-        finally:
-            self.shutdown()
-
-    do_c = do_cont = do_continue
+    do_c = do_cont = pdb.Pdb.do_continue
 
     def do_quit(self, arg):
         """Clean-up and do underlying quit."""
@@ -163,7 +158,7 @@ class OccupiedPorts(object):
 
     def unclaim(self, port):
         self.lock.acquire(True)
-        del self.claims[port]
+        self.claims.pop(port, None)
         self.lock.release()
 
 # {port: sys.stdout} pairs to track recursive rpdb invocation on same port.
