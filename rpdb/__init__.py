@@ -32,7 +32,6 @@ class FileObjectWrapper(object):
 
 
 class Rpdb(pdb.Pdb):
-
     def __init__(self, addr=DEFAULT_ADDR, port=DEFAULT_PORT):
         """Initialize the socket and initialize pdb."""
 
@@ -49,31 +48,45 @@ class Rpdb(pdb.Pdb):
 
         # Writes to stdout are forbidden in mod_wsgi environments
         try:
-            sys.stderr.write("pdb is running on %s:%d\n"
-                             % self.skt.getsockname())
+            sys.stderr.write("pdb is running on %s:%d\n" % self.skt.getsockname())
         except IOError:
             pass
 
         (clientsocket, address) = self.skt.accept()
-        handle = clientsocket.makefile('rw')
-        pdb.Pdb.__init__(self, completekey='tab',
-                         stdin=FileObjectWrapper(handle, sys.stdin),
-                         stdout=FileObjectWrapper(handle, sys.stdin))
-        os.dup2(handle.fileno(), sys.stdout.fileno())
-        os.dup2(handle.fileno(), sys.stdin.fileno())
+        self.clientsocket = clientsocket
+        handle = clientsocket.makefile("rw")
+        pdb.Pdb.__init__(
+            self,
+            completekey="tab",
+            stdin=FileObjectWrapper(handle, sys.stdin),
+            stdout=FileObjectWrapper(handle, sys.stdin),
+        )
+        os.dup2(clientsocket.fileno(), sys.stdout.fileno())
+        os.dup2(clientsocket.fileno(), sys.stdin.fileno())
         OCCUPIED.claim(port, sys.stdout)
 
     def shutdown(self):
         """Revert stdin and stdout, close the socket."""
         os.dup2(self.dup_stdout_fileno, sys.stdout.fileno())
         os.dup2(self.dup_stdin_fileno, sys.stdin.fileno())
-        os.close(self.dup_stdout_fileno)
-        os.close(self.dup_stdout_fileno)
-        OCCUPIED.unclaim(self.port)
-        self.skt.shutdown(socket.SHUT_RDWR)
+
+        # `shutdown` on the `skt` will trigger an error
+        # if you don't `shutdown` the `clientsocket` socat & friends will hang
+        self.clientsocket.shutdown(socket.SHUT_RDWR)
+
         self.skt.close()
 
-    do_c = do_cont = pdb.Pdb.do_continue
+        OCCUPIED.unclaim(self.port)
+
+    def do_continue(self, arg):
+        """Clean-up and do underlying continue."""
+        try:
+            return pdb.Pdb.do_continue(self, arg)
+        finally:
+            self.shutdown()
+
+    do_c = do_cont = do_continue
+    # do_c = do_cont = pdb.Pdb.do_continue
 
     def do_quit(self, arg):
         """Clean-up and do underlying quit."""
@@ -152,7 +165,7 @@ class OccupiedPorts(object):
 
     def is_claimed(self, port, handle):
         self.lock.acquire(True)
-        got = (self.claims.get(port) == id(handle))
+        got = self.claims.get(port) == id(handle)
         self.lock.release()
         return got
 
@@ -160,6 +173,7 @@ class OccupiedPorts(object):
         self.lock.acquire(True)
         self.claims.pop(port, None)
         self.lock.release()
+
 
 # {port: sys.stdout} pairs to track recursive rpdb invocation on same port.
 # This scheme doesn't interfere with recursive invocations on separate ports -
