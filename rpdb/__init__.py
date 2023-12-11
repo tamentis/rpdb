@@ -3,6 +3,7 @@
 __author__ = "Bertrand Janin <b@janin.com>"
 __version__ = "0.1.6"
 
+from contextlib import contextmanager
 import pdb
 import socket
 import threading
@@ -14,6 +15,21 @@ from functools import partial
 
 DEFAULT_ADDR = "127.0.0.1"
 DEFAULT_PORT = 4444
+
+
+# https://github.com/gotcha/ipdb/blob/400e37c56c9772fdc4c04ddb29d8a4a20568fb1a/ipdb/__main__.py#L233-L246
+@contextmanager
+def launch_ipdb_on_exception():
+    try:
+        yield
+    except Exception:
+        post_mortem()
+    finally:
+        pass
+
+
+# iex is a concise alias
+iex = launch_ipdb_on_exception()
 
 
 class FileObjectWrapper(object):
