@@ -11,6 +11,7 @@ import signal
 import sys
 import traceback
 import os
+import typing as t
 from functools import partial
 
 DEFAULT_ADDR = "127.0.0.1"
@@ -32,6 +33,28 @@ def launch_ipdb_on_exception():
 iex = launch_ipdb_on_exception()
 
 
+def ipython_available():
+    try:
+        from IPython.core.debugger import IPdb
+
+        return True
+    except ImportError:
+        return False
+
+
+def get_debugger_class():
+    debugger_base = Pdb
+
+    if ipython_available():
+        debugger_base = pdb.IPdb
+
+    class Debugger(debugger_base, Rpdb):
+        def __init__(self, addr=DEFAULT_ADDR, port=DEFAULT_PORT):
+            Rpdb.__init__(self, addr=addr, port=port, debugger_base=debugger_base)
+
+    return Debugger
+
+
 class FileObjectWrapper(object):
     def __init__(self, fileobject, stdio):
         self._obj = fileobject
@@ -47,9 +70,13 @@ class FileObjectWrapper(object):
         return attr
 
 
-class Rpdb(pdb.Pdb):
-    def __init__(self, addr=DEFAULT_ADDR, port=DEFAULT_PORT):
+class Rpdb:
+    def __init__(
+        self, addr=DEFAULT_ADDR, port=DEFAULT_PORT, debugger_base=t.Type[pdb.Pdb]
+    ):
         """Initialize the socket and initialize pdb."""
+
+        self.debugger = debugger_base
 
         # Backup stdin and stdout before replacing them by the socket handle
         self.dup_stdout_fileno = os.dup(sys.stdout.fileno())
@@ -71,12 +98,14 @@ class Rpdb(pdb.Pdb):
         (clientsocket, address) = self.skt.accept()
         self.clientsocket = clientsocket
         handle = clientsocket.makefile("rw")
-        pdb.Pdb.__init__(
+
+        self.debugger.__init__(
             self,
             completekey="tab",
             stdin=FileObjectWrapper(handle, sys.stdin),
             stdout=FileObjectWrapper(handle, sys.stdin),
         )
+
         os.dup2(clientsocket.fileno(), sys.stdout.fileno())
         os.dup2(clientsocket.fileno(), sys.stdin.fileno())
         OCCUPIED.claim(port, sys.stdout)
@@ -97,17 +126,16 @@ class Rpdb(pdb.Pdb):
     def do_continue(self, arg):
         """Clean-up and do underlying continue."""
         try:
-            return pdb.Pdb.do_continue(self, arg)
+            return self.debugger.do_continue(self, arg)
         finally:
             self.shutdown()
 
     do_c = do_cont = do_continue
-    # do_c = do_cont = pdb.Pdb.do_continue
 
     def do_quit(self, arg):
         """Clean-up and do underlying quit."""
         try:
-            return pdb.Pdb.do_quit(self, arg)
+            return self.debugger.do_quit(self, arg)
         finally:
             self.shutdown()
 
@@ -116,7 +144,7 @@ class Rpdb(pdb.Pdb):
     def do_EOF(self, arg):
         """Clean-up and do underlying EOF."""
         try:
-            return pdb.Pdb.do_EOF(self, arg)
+            return self.debugger.do_EOF(self, arg)
         finally:
             self.shutdown()
 
@@ -128,7 +156,7 @@ def set_trace(addr=DEFAULT_ADDR, port=DEFAULT_PORT, frame=None):
 
     """
     try:
-        debugger = Rpdb(addr=addr, port=port)
+        debugger = get_debugger_class()(addr=addr, port=port)
     except socket.error:
         if OCCUPIED.is_claimed(port, sys.stdout):
             # rpdb is already on this port - good enough, let it go on:
@@ -153,9 +181,10 @@ def handle_trap(addr=DEFAULT_ADDR, port=DEFAULT_PORT):
 
 
 def post_mortem(addr=DEFAULT_ADDR, port=DEFAULT_PORT):
-    debugger = Rpdb(addr=addr, port=port)
     type, value, tb = sys.exc_info()
     traceback.print_exc()
+
+    debugger = get_debugger_class()(addr=addr, port=port)
     debugger.reset()
     debugger.interaction(None, tb)
 
