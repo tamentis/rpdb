@@ -35,18 +35,24 @@ iex = launch_ipdb_on_exception()
 
 def ipython_available():
     try:
-        from IPython.core.debugger import IPdb
+        from IPython.core.debugger import Pdb
 
         return True
     except ImportError:
         return False
 
 
+# TODO shell = get_ipython() to detect if we are in ipython
+# from IPython.terminal.debugger import TerminalPdb
+
+
 def get_debugger_class():
-    debugger_base = Pdb
+    debugger_base = pdb.Pdb
 
     if ipython_available():
-        debugger_base = pdb.IPdb
+        from IPython.core.debugger import Pdb
+
+        debugger_base = Pdb
 
     class Debugger(debugger_base, Rpdb):
         def __init__(self, addr=DEFAULT_ADDR, port=DEFAULT_PORT):
