@@ -26,6 +26,14 @@ def get_default_port():
     return int(os.environ.get("PYTHON_RPDB_PORT", DEFAULT_PORT))
 
 
+def safe_print(msg):
+    # Writes to stdout are forbidden in mod_wsgi environments
+    try:
+        sys.stderr.write("[rpdb] " + msg)
+    except IOError:
+        pass
+
+
 # https://github.com/gotcha/ipdb/blob/400e37c56c9772fdc4c04ddb29d8a4a20568fb1a/ipdb/__main__.py#L233-L246
 @contextmanager
 def launch_ipdb_on_exception():
@@ -50,11 +58,10 @@ def ipython_available():
         return False
 
 
-# TODO shell = get_ipython() to detect if we are in ipython
-# from IPython.terminal.debugger import TerminalPdb
-
-
 def get_debugger_class():
+    # TODO shell = get_ipython() to detect if we are in ipython
+    # from IPython.terminal.debugger import TerminalPdb
+
     debugger_base = pdb.Pdb
 
     if ipython_available():
@@ -90,6 +97,11 @@ class Rpdb:
 
         self.debugger = debugger_base
 
+        addr = addr or get_default_address()
+        port = port or get_default_port()
+
+        safe_print(f"attempting to bind {addr}:{port}")
+
         # Backup stdin and stdout before replacing them by the socket handle
         self.dup_stdout_fileno = os.dup(sys.stdout.fileno())
         self.dup_stdin_fileno = os.dup(sys.stdin.fileno())
@@ -98,14 +110,10 @@ class Rpdb:
         # Open a 'reusable' socket to let the webapp reload on the same port
         self.skt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.skt.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
-        self.skt.bind((addr or get_default_address(), port or get_default_port()))
+        self.skt.bind((addr, port))
         self.skt.listen(1)
 
-        # Writes to stdout are forbidden in mod_wsgi environments
-        try:
-            sys.stderr.write("pdb is running on %s:%d\n" % self.skt.getsockname())
-        except IOError:
-            pass
+        safe_print("running on %s:%d\n" % self.skt.getsockname())
 
         (clientsocket, address) = self.skt.accept()
         self.clientsocket = clientsocket
