@@ -177,14 +177,14 @@ def set_trace(addr=None, port=None, frame=None):
     """
     try:
         debugger = get_debugger_class()(addr=addr, port=port)
-    except socket.error:
+    except socket.error as e:
         if OCCUPIED.is_claimed(port, sys.stdout):
             # rpdb is already on this port - good enough, let it go on:
-            sys.stdout.write("(Recurrent rpdb invocation ignored)\n")
+            safe_print("(Recurrent rpdb invocation ignored)\n")
             return
         else:
             # Port occupied by something else.
-            raise
+            safe_print("Target port is already in use. Original error: %s\n" % e)
     try:
         debugger.set_trace(frame or sys._getframe().f_back)
     except Exception:
