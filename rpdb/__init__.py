@@ -29,7 +29,7 @@ def get_default_port():
 def safe_print(msg):
     # Writes to stdout are forbidden in mod_wsgi environments
     try:
-        sys.stderr.write("[rpdb] " + msg)
+        sys.stderr.write("[rpdb] " + msg + "\n")
     except IOError:
         pass
 
@@ -185,6 +185,8 @@ def set_trace(addr=None, port=None, frame=None):
         else:
             # Port occupied by something else.
             safe_print("Target port is already in use. Original error: %s\n" % e)
+            return
+
     try:
         debugger.set_trace(frame or sys._getframe().f_back)
     except Exception:
