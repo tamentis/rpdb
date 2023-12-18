@@ -18,6 +18,14 @@ DEFAULT_ADDR = "127.0.0.1"
 DEFAULT_PORT = 4444
 
 
+def get_default_address():
+    return os.environ.get("PYTHON_RPDB_ADDRESS", DEFAULT_ADDR)
+
+
+def get_default_port():
+    return int(os.environ.get("PYTHON_RPDB_PORT", DEFAULT_PORT))
+
+
 # https://github.com/gotcha/ipdb/blob/400e37c56c9772fdc4c04ddb29d8a4a20568fb1a/ipdb/__main__.py#L233-L246
 @contextmanager
 def launch_ipdb_on_exception():
@@ -55,7 +63,7 @@ def get_debugger_class():
         debugger_base = Pdb
 
     class Debugger(debugger_base, Rpdb):
-        def __init__(self, addr=DEFAULT_ADDR, port=DEFAULT_PORT):
+        def __init__(self, addr=None, port=None):
             Rpdb.__init__(self, addr=addr, port=port, debugger_base=debugger_base)
 
     return Debugger
@@ -77,9 +85,7 @@ class FileObjectWrapper(object):
 
 
 class Rpdb:
-    def __init__(
-        self, addr=DEFAULT_ADDR, port=DEFAULT_PORT, debugger_base=t.Type[pdb.Pdb]
-    ):
+    def __init__(self, addr=None, port=None, debugger_base=t.Type[pdb.Pdb]):
         """Initialize the socket and initialize pdb."""
 
         self.debugger = debugger_base
@@ -92,7 +98,7 @@ class Rpdb:
         # Open a 'reusable' socket to let the webapp reload on the same port
         self.skt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.skt.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
-        self.skt.bind((addr, port))
+        self.skt.bind((addr or get_default_address(), port or get_default_port()))
         self.skt.listen(1)
 
         # Writes to stdout are forbidden in mod_wsgi environments
@@ -155,7 +161,7 @@ class Rpdb:
             self.shutdown()
 
 
-def set_trace(addr=DEFAULT_ADDR, port=DEFAULT_PORT, frame=None):
+def set_trace(addr=None, port=None, frame=None):
     """Wrapper function to keep the same import x; x.set_trace() interface.
 
     We catch all the possible exceptions from pdb and cleanup.
@@ -181,12 +187,12 @@ def _trap_handler(addr, port, signum, frame):
     set_trace(addr, port, frame=frame)
 
 
-def handle_trap(addr=DEFAULT_ADDR, port=DEFAULT_PORT):
+def handle_trap(addr=None, port=None):
     """Register rpdb as the SIGTRAP signal handler"""
     signal.signal(signal.SIGTRAP, partial(_trap_handler, addr, port))
 
 
-def post_mortem(addr=DEFAULT_ADDR, port=DEFAULT_PORT):
+def post_mortem(addr=None, port=None):
     type, value, tb = sys.exc_info()
     traceback.print_exc()
 
