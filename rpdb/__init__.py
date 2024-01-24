@@ -69,14 +69,27 @@ def get_debugger_class():
 
         debugger_base = Pdb
 
-    class Debugger(debugger_base, Rpdb):
+    class Debugger(Rpdb, debugger_base):
         def __init__(self, addr=None, port=None):
             Rpdb.__init__(self, addr=addr, port=port, debugger_base=debugger_base)
 
     return Debugger
 
 
+def shutdown_socket(sock: socket.socket):
+    try:
+        sock.shutdown(socket.SHUT_RDWR)
+    except OSError:
+        pass  # Socket is already closed
+    finally:
+        sock.close()
+
+
 class FileObjectWrapper(object):
+    """
+    A wrapper class for file objects that provides access to both the wrapped file object and standard I/O streams.
+    """
+
     def __init__(self, fileobject, stdio):
         self._obj = fileobject
         self._io = stdio
@@ -103,8 +116,8 @@ class Rpdb:
         safe_print(f"attempting to bind {addr}:{port}")
 
         # Backup stdin and stdout before replacing them by the socket handle
-        self.dup_stdout_fileno = os.dup(sys.stdout.fileno())
-        self.dup_stdin_fileno = os.dup(sys.stdin.fileno())
+        # self.dup_stdout_fileno = os.dup(sys.stdout.fileno())
+        # self.dup_stdin_fileno = os.dup(sys.stdin.fileno())
         self.port = port
 
         # Open a 'reusable' socket to let the webapp reload on the same port
@@ -122,29 +135,35 @@ class Rpdb:
         self.debugger.__init__(
             self,
             completekey="tab",
-            stdin=FileObjectWrapper(handle, sys.stdin),
-            stdout=FileObjectWrapper(handle, sys.stdin),
+            stdin=handle,
+            stdout=handle,
         )
 
-        os.dup2(clientsocket.fileno(), sys.stdout.fileno())
-        os.dup2(clientsocket.fileno(), sys.stdin.fileno())
+        # os.dup2(clientsocket.fileno(), sys.stdout.fileno())
+        # os.dup2(clientsocket.fileno(), sys.stdin.fileno())
         OCCUPIED.claim(port, sys.stdout)
 
     def shutdown(self):
         """Revert stdin and stdout, close the socket."""
-        os.dup2(self.dup_stdout_fileno, sys.stdout.fileno())
-        os.dup2(self.dup_stdin_fileno, sys.stdin.fileno())
+        safe_print("shutting down\n")
+        # os.dup2(self.dup_stdout_fileno, sys.stdout.fileno())
+        # os.dup2(self.dup_stdin_fileno, sys.stdin.fileno())
 
         # `shutdown` on the `skt` will trigger an error
         # if you don't `shutdown` the `clientsocket` socat & friends will hang
-        self.clientsocket.shutdown(socket.SHUT_RDWR)
+        # self.clientsocket.shutdown(socket.SHUT_RDWR)
+        # self.clientsocket.close()
+        shutdown_socket(self.clientsocket)
 
-        self.skt.close()
+        # self.skt.shutdown(socket.SHUT_RDWR)
+        # self.skt.close()
+        shutdown_socket(self.skt)
 
         OCCUPIED.unclaim(self.port)
 
     def do_continue(self, arg):
         """Clean-up and do underlying continue."""
+
         try:
             return self.debugger.do_continue(self, arg)
         finally:
@@ -167,6 +186,18 @@ class Rpdb:
             return self.debugger.do_EOF(self, arg)
         finally:
             self.shutdown()
+
+    # def do_interact(self, arg):
+    #     ipshell = embed.InteractiveShellEmbed(
+    #         config=self.shell.config,
+    #         banner1="*interactive*",
+    #         exit_msg="*exiting interactive console...*",
+    #     )
+    #     global_ns = self.curframe.f_globals
+    #     ipshell(
+    #         module=sys.modules.get(global_ns["__name__"], None),
+    #         local_ns=self.curframe_locals,
+    #     )
 
 
 def set_trace(addr=None, port=None, frame=None):
