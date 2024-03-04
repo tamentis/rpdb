@@ -31,7 +31,9 @@ jobs:
         with:
           poetry-version: "${{ steps.versions.outputs.poetry }}"
       - run: pip install .
-      - run: pytest -v
+      # TODO actually have a very basic test suite
+      # - run: pytest -v
+      - run: python -c "from rpdb import set_trace"
 
   build-and-publish:
     if: github.ref == 'refs/heads/master'
