@@ -1,2 +1,4 @@
 dist/
 MANIFEST
+*.egg-info
+.mypy_cache
