@@ -116,8 +116,8 @@ class Rpdb:
         safe_print(f"attempting to bind {addr}:{port}")
 
         # Backup stdin and stdout before replacing them by the socket handle
-        # self.dup_stdout_fileno = os.dup(sys.stdout.fileno())
-        # self.dup_stdin_fileno = os.dup(sys.stdin.fileno())
+        self.dup_stdout_fileno = os.dup(sys.stdout.fileno())
+        self.dup_stdin_fileno = os.dup(sys.stdin.fileno())
         self.port = port
 
         # Open a 'reusable' socket to let the webapp reload on the same port
@@ -139,15 +139,20 @@ class Rpdb:
             stdout=handle,
         )
 
-        # os.dup2(clientsocket.fileno(), sys.stdout.fileno())
-        # os.dup2(clientsocket.fileno(), sys.stdin.fileno())
+        # overwrite the default stdout and stdin with the socket file handles
+        # if this isn't done, any other interactive programs (like `interact` or ipy) will
+        os.dup2(clientsocket.fileno(), sys.stdout.fileno())
+        os.dup2(clientsocket.fileno(), sys.stdin.fileno())
+
         OCCUPIED.claim(port, sys.stdout)
 
     def shutdown(self):
         """Revert stdin and stdout, close the socket."""
         safe_print("shutting down\n")
-        # os.dup2(self.dup_stdout_fileno, sys.stdout.fileno())
-        # os.dup2(self.dup_stdin_fileno, sys.stdin.fileno())
+
+        # restore original stdout and stdin since we are exiting debug mode
+        os.dup2(self.dup_stdout_fileno, sys.stdout.fileno())
+        os.dup2(self.dup_stdin_fileno, sys.stdin.fileno())
 
         # `shutdown` on the `skt` will trigger an error
         # if you don't `shutdown` the `clientsocket` socat & friends will hang
@@ -187,6 +192,7 @@ class Rpdb:
         finally:
             self.shutdown()
 
+    # TODO best approach here would be to bind the interactive ipy session to the new pipes we setup
     # def do_interact(self, arg):
     #     ipshell = embed.InteractiveShellEmbed(
     #         config=self.shell.config,
