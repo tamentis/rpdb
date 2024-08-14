@@ -56,7 +56,7 @@ jobs:
           python-version: "${{ steps.versions.outputs.python }}"
 
       - name: Install Poetry
-        uses: Gr1N/setup-poetry@v8
+        uses: Gr1N/setup-poetry@v9
         with:
           poetry-version: "${{ steps.versions.outputs.poetry }}"
 
