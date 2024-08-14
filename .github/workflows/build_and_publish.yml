@@ -64,32 +64,32 @@ jobs:
         run: |
           poetry install
 
-      - name: Conventional Changelog Action
-        id: changelog
-        uses: TriPSs/conventional-changelog-action@v5
-        with:
-          github-token: ${{ secrets.github_token }}
-          version-file: ./pyproject.toml
-          version-path: tool.poetry.version
-          fallback-version: 0.1.0
-          output-file: CHANGELOG.md
+      # - name: Conventional Changelog Action
+      #   id: changelog
+      #   uses: TriPSs/conventional-changelog-action@v5
+      #   with:
+      #     github-token: ${{ secrets.github_token }}
+      #     version-file: ./pyproject.toml
+      #     version-path: tool.poetry.version
+      #     fallback-version: 0.1.0
+      #     output-file: CHANGELOG.md
 
-      # NOTE must run after versioning otherwise the right version won't be pushed
-      - name: Build distribution package
-        if: ${{ steps.changelog.outputs.skipped == 'false' }}
-        run: |
-          poetry build
+      # # NOTE must run after versioning otherwise the right version won't be pushed
+      # - name: Build distribution package
+      #   if: ${{ steps.changelog.outputs.skipped == 'false' }}
+      #   run: |
+      #     poetry build
 
-      - name: Publish to PyPI
-        if: ${{ steps.changelog.outputs.skipped == 'false' }}
-        run: |
-          # `gh secret set PYPI_API_TOKEN --app actions --body $PYPI_API_TOKEN`
-          poetry publish -u __token__ -p ${{ secrets.PYPI_API_TOKEN }}
+      # - name: Publish to PyPI
+      #   if: ${{ steps.changelog.outputs.skipped == 'false' }}
+      #   run: |
+      #     # `gh secret set PYPI_API_TOKEN --app actions --body $PYPI_API_TOKEN`
+      #     poetry publish -u __token__ -p ${{ secrets.PYPI_API_TOKEN }}
 
-      - name: Github Release
-        if: ${{ steps.changelog.outputs.skipped == 'false' }}
-        uses: softprops/action-gh-release@v1
-        with:
-          # output options: https://github.com/TriPSs/conventional-changelog-action#outputs
-          body: ${{ steps.changelog.outputs.clean_changelog }}
-          tag_name: ${{ steps.changelog.outputs.tag }}
+      # - name: Github Release
+      #   if: ${{ steps.changelog.outputs.skipped == 'false' }}
+      #   uses: softprops/action-gh-release@v1
+      #   with:
+      #     # output options: https://github.com/TriPSs/conventional-changelog-action#outputs
+      #     body: ${{ steps.changelog.outputs.clean_changelog }}
+      #     tag_name: ${{ steps.changelog.outputs.tag }}
