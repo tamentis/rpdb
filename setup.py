@@ -7,10 +7,10 @@ from io import open
 
 here = os.path.abspath(os.path.dirname(__file__))
 try:
-    README = open(os.path.join(here, 'README.rst'), encoding='utf8').read()
-    CHANGES = open(os.path.join(here, 'CHANGES.txt')).read()
+    README = open(os.path.join(here, "README.md"), encoding="utf8").read()
+    CHANGES = open(os.path.join(here, "CHANGES.txt")).read()
 except IOError:
-    README = CHANGES = ''
+    README = CHANGES = ""
 
 
 setup(
@@ -36,5 +36,5 @@ setup(
         "Programming Language :: Python :: 3.0",
         "Programming Language :: Python :: 3.1",
         "Topic :: Software Development :: Debuggers",
-    ]
+    ],
 )
