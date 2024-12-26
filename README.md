@@ -34,7 +34,7 @@ pip install rpdb
 
 For a quick, ad hoc alternative, you can copy the entire rpdb subdirectory
 (the directory directly containing the __init__.py file) to somewhere on your
-$PYTHONPATH.
+`$PYTHONPATH`.
 
 ## Installation in a Tomcat webapp
 

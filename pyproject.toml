@@ -1,14 +1,14 @@
 [tool.poetry]
 name = "rpdb"
-version = "0.1.6"
+version = "0.2.0"
 description = "pdb wrapper with remote access via tcp socket"
-authors = ["Bertrand Janin <b@janin.com>"]
-readme = "README.rst"
+authors = ["Bertrand Janin <b@janin.com>", "Michael Bianco <mike@mikebian.co>"]
+readme = "README.md"
 homepage = "http://tamentis.com/projects/rpdb"
 packages = [{ include = "rpdb" }]
 
 [tool.poetry.dependencies]
-python = ">=2.5"
+python = ">=3.8"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
