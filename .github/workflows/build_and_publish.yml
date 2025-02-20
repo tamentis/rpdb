@@ -27,7 +27,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "${{ matrix.python-version }}"
-      - uses: abatilo/actions-poetry@v3.0.1
+      - uses: abatilo/actions-poetry@v4.0.0
         with:
           poetry-version: "${{ steps.versions.outputs.poetry }}"
       - run: pip install .
