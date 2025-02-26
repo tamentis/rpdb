@@ -1,7 +1,7 @@
 """Remote Python Debugger (pdb wrapper)."""
 
 __author__ = "Bertrand Janin <b@janin.com>"
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 from contextlib import contextmanager
 import pdb
