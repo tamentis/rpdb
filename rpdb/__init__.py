@@ -58,20 +58,20 @@ def ipython_available():
         return False
 
 
-def get_debugger_class():
+def get_debugger_class(cls: type[pdb.Pdb] | None = None):
     # TODO shell = get_ipython() to detect if we are in ipython
     # from IPython.terminal.debugger import TerminalPdb
 
-    debugger_base = pdb.Pdb
+    debugger_base = cls or pdb.Pdb
 
     if ipython_available():
         from IPython.core.debugger import Pdb
 
-        debugger_base = Pdb
+        debugger_base = t.cast(type[pdb.Pdb], Pdb)
 
     class Debugger(Rpdb, debugger_base):
-        def __init__(self, addr=None, port=None):
-            Rpdb.__init__(self, addr=addr, port=port, debugger_base=debugger_base)
+        def __init__(self, addr=None, port=None, *args, **kwargs):
+            Rpdb.__init__(self, *args, addr=addr, port=port, debugger_base=debugger_base, **kwargs)
 
     return Debugger
 
@@ -105,7 +105,7 @@ class FileObjectWrapper(object):
 
 
 class Rpdb:
-    def __init__(self, addr=None, port=None, debugger_base=t.Type[pdb.Pdb]):
+    def __init__(self, addr=None, port=None, debugger_base=pdb.Pdb, *args, **kwargs):
         """Initialize the socket and initialize pdb."""
 
         self.debugger = debugger_base
@@ -133,7 +133,7 @@ class Rpdb:
         handle = clientsocket.makefile("rw")
 
         self.debugger.__init__(
-            self,
+            t.cast(pdb.Pdb, self),
             completekey="tab",
             stdin=handle,
             stdout=handle,
@@ -206,14 +206,15 @@ class Rpdb:
     #     )
 
 
-def set_trace(addr=None, port=None, frame=None):
+def set_trace(addr=None, port=None, frame=None, debugger_base=None, *args, **kwargs):
     """Wrapper function to keep the same import x; x.set_trace() interface.
 
     We catch all the possible exceptions from pdb and cleanup.
 
     """
     try:
-        debugger = get_debugger_class()(addr=addr, port=port)
+        debugger_cls = get_debugger_class(debugger_base)
+        debugger = debugger_cls(*args, addr=addr, port=port, **kwargs)
     except socket.error as e:
         if OCCUPIED.is_claimed(port, sys.stdout):
             # rpdb is already on this port - good enough, let it go on:
@@ -221,6 +222,7 @@ def set_trace(addr=None, port=None, frame=None):
             return
         else:
             # Port occupied by something else.
+            traceback.print_exc()
             safe_print("Target port is already in use. Original error: %s\n" % e)
             return
 
@@ -239,11 +241,11 @@ def handle_trap(addr=None, port=None):
     signal.signal(signal.SIGTRAP, partial(_trap_handler, addr, port))
 
 
-def post_mortem(addr=None, port=None):
-    type, value, tb = sys.exc_info()
+def post_mortem(addr=None, port=None, debugger_base=None, *args, **kwargs):
+    _, _, tb = sys.exc_info()
     traceback.print_exc()
 
-    debugger = get_debugger_class()(addr=addr, port=port)
+    debugger = get_debugger_class(debugger_base)(*args, addr=addr, port=port, **kwargs)
     debugger.reset()
     debugger.interaction(None, tb)
 
