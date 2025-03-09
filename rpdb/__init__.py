@@ -105,7 +105,7 @@ class FileObjectWrapper(object):
 
 
 class Rpdb:
-    def __init__(self, addr=None, port=None, debugger_base=t.Type[pdb.Pdb]):
+    def __init__(self, addr=None, port=None, debugger_base: t.Type[pdb.Pdb] = pdb.Pdb):
         """Initialize the socket and initialize pdb."""
 
         self.debugger = debugger_base
