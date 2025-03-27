@@ -32,6 +32,11 @@ Or, even better, you can use socat to enable some additional readline-related fe
 socat TCP:0.0.0.0:444 READLINE
 ```
 
+### Use Cases
+
+* breakpoints in a fastapi development server. Stdin gets corrupted because of the subprocess setup such that interactive debuggers don't work.
+* systems which consume stdin (such as [Estuary connector](https://estuary.dev) which consumes jsonlines over stdin)
+
 ## Installation in CPython (standard Python)
 
 ```shell
