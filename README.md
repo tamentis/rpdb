@@ -26,6 +26,12 @@ to continue is to access rpdb using telnet, netcat, etc..:
 nc 127.0.0.1 4444
 ```
 
+Or, even better, you can use socat to enable some additional readline-related features (tab completion still doesn't work, though):
+
+```shell
+socat TCP:0.0.0.0:444 READLINE
+```
+
 ## Installation in CPython (standard Python)
 
 ```shell
