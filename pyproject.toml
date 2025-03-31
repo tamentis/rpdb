@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "rpdb"
-version = "0.2.0"
+version = "0.2.1"
 description = "pdb wrapper with remote access via tcp socket"
 authors = ["Bertrand Janin <b@janin.com>", "Michael Bianco <mike@mikebian.co>"]
 readme = "README.md"
