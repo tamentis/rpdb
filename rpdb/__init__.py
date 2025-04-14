@@ -9,10 +9,13 @@ import socket
 import threading
 import signal
 import sys
+import time
 import traceback
 import os
 import typing as t
 from functools import partial
+
+from .ports import find_available_port
 
 DEFAULT_ADDR = "127.0.0.1"
 DEFAULT_PORT = 4444
@@ -25,6 +28,8 @@ def get_default_address():
 def get_default_port():
     return int(os.environ.get("PYTHON_RPDB_PORT", DEFAULT_PORT))
 
+def should_find_available_port():
+    return os.environ.get("PYTHON_RPDB_FIND_AVAILABLE_PORT", "1") == "1"
 
 def safe_print(msg):
     # Writes to stdout are forbidden in mod_wsgi environments
@@ -113,12 +118,34 @@ class Rpdb:
         addr = addr or get_default_address()
         port = port or get_default_port()
 
+        # if you have a forked application, breakpoint could be called multiple times
+        # this enables you to avoid having to make sure another debugging session is not running
+        if should_find_available_port():
+            original_port = port
+            port = find_available_port(addr, port)
+            if port != original_port:
+                safe_print(f"port {original_port} is in use, using {port} instead\n")
+
         safe_print(f"attempting to bind {addr}:{port}")
 
+        self.dup_stdout_fileno = None
+        self.dup_stdin_fileno = None
+
         # Backup stdin and stdout before replacing them by the socket handle
-        self.dup_stdout_fileno = os.dup(sys.stdout.fileno())
-        self.dup_stdin_fileno = os.dup(sys.stdin.fileno())
-        self.port = port
+        # this seems to fail in scenarios like pytester, which creates a subprocess and mutates pipes in some way
+        # this is why we have these wrapped in a try/except block.
+
+        try:
+            self.dup_stdout_fileno = os.dup(sys.stdout.fileno())
+        except (AttributeError, IOError, ValueError):
+            safe_print("failed to backup stdin")
+            pass
+
+        try:
+            self.dup_stdin_fileno = os.dup(sys.stdin.fileno())
+        except (AttributeError, IOError, ValueError):
+            safe_print("failed to backup stdin")
+            pass
 
         # Open a 'reusable' socket to let the webapp reload on the same port
         self.skt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -130,6 +157,7 @@ class Rpdb:
 
         (clientsocket, address) = self.skt.accept()
         self.clientsocket = clientsocket
+        self.port = port
         handle = clientsocket.makefile("rw")
 
         self.debugger.__init__(
@@ -140,9 +168,13 @@ class Rpdb:
         )
 
         # overwrite the default stdout and stdin with the socket file handles
-        # if this isn't done, any other interactive programs (like `interact` or ipy) will
-        os.dup2(clientsocket.fileno(), sys.stdout.fileno())
-        os.dup2(clientsocket.fileno(), sys.stdin.fileno())
+        # if this isn't done, any other interactive programs (like `interact` or ipy) will fail to operate
+        
+        if self.dup_stdout_fileno:
+            os.dup2(clientsocket.fileno(), sys.stdout.fileno())
+        
+        if self.dup_stdin_fileno:
+            os.dup2(clientsocket.fileno(), sys.stdin.fileno())
 
         OCCUPIED.claim(port, sys.stdout)
 
@@ -151,8 +183,11 @@ class Rpdb:
         safe_print("shutting down\n")
 
         # restore original stdout and stdin since we are exiting debug mode
-        os.dup2(self.dup_stdout_fileno, sys.stdout.fileno())
-        os.dup2(self.dup_stdin_fileno, sys.stdin.fileno())
+        if self.dup_stdout_fileno:
+            os.dup2(self.dup_stdout_fileno, sys.stdout.fileno())
+
+        if self.dup_stdin_fileno:
+            os.dup2(self.dup_stdin_fileno, sys.stdin.fileno())
 
         # `shutdown` on the `skt` will trigger an error
         # if you don't `shutdown` the `clientsocket` socat & friends will hang
@@ -206,23 +241,55 @@ class Rpdb:
     #     )
 
 
+def _get_debugger(addr, port):
+    try:
+        return get_debugger_class()(addr=addr, port=port)
+    except socket.error as e:
+        if OCCUPIED.is_claimed(port, sys.stdout):
+            # rpdb is already on this port - good enough, let it go on:
+            safe_print("recurrent rpdb invocation ignored")
+            return None
+        else:
+            # Port occupied by something else.
+            safe_print("target port is already in use. Original error: %s" % e)
+            return None
+
+
 def set_trace(addr=None, port=None, frame=None):
-    """Wrapper function to keep the same import x; x.set_trace() interface.
+    """Wrapper function to keep the same 'import x; x.set_trace()' interface.
 
     We catch all the possible exceptions from pdb and cleanup.
 
     """
-    try:
-        debugger = get_debugger_class()(addr=addr, port=port)
-    except socket.error as e:
-        if OCCUPIED.is_claimed(port, sys.stdout):
-            # rpdb is already on this port - good enough, let it go on:
-            safe_print("(Recurrent rpdb invocation ignored)\n")
+
+    start_time = time.time()
+    timeout = 60 * 3
+    retry_interval = 10
+
+    # Keep trying until timeout
+    while True:
+        debugger = _get_debugger(addr, port)
+        if debugger:
+            break
+
+        # Check if we've exceeded the timeout
+        elapsed = time.time() - start_time
+        if timeout <= 0 or elapsed >= timeout:
+            safe_print(f"Giving up after {elapsed:.1f}s - port {port} is still in use")
             return
-        else:
-            # Port occupied by something else.
-            safe_print("Target port is already in use. Original error: %s\n" % e)
-            return
+
+        remaining = timeout - elapsed
+        retry_wait = min(retry_interval, remaining)
+        safe_print(
+            f"Port {port} is busy, retrying in {retry_wait:.1f}s (timeout in {remaining:.1f}s)"
+        )
+        time.sleep(retry_wait)
+
+    # we can't just find another available port, since there's only one stdin & stdout
+
+    #  we tried with a separate port, it still failed : /
+    if not debugger:
+        return
 
     try:
         debugger.set_trace(frame or sys._getframe().f_back)
