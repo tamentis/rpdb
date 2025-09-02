@@ -20,7 +20,7 @@ jobs:
       matrix:
         python-version: ["3.13", "3.12", "3.11", "3.10", "3.9", "3.8"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: ASDF Parse
         uses: kota65535/github-asdf-parse-action@v2.0.0
         id: versions
@@ -42,7 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
