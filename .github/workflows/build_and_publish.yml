@@ -24,7 +24,7 @@ jobs:
       - name: ASDF Parse
         uses: kota65535/github-asdf-parse-action@v2.0.0
         id: versions
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "${{ matrix.python-version }}"
       - uses: abatilo/actions-poetry@v4.0.0
@@ -51,7 +51,7 @@ jobs:
         id: versions
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "${{ steps.versions.outputs.python }}"
 
